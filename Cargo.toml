@@ -1,0 +1,7 @@
+[workspace]
+members = [
+    "integration_tests_bindgen_macro",
+    "integration_tests_toolset",
+    
+    "tests"
+]
