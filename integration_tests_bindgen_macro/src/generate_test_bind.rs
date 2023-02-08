@@ -1,7 +1,7 @@
+use crate::types::{FunctionInfo, ImplInfo, Mutability, Payable, StructInfo};
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
-
-use crate::types::{FunctionInfo, ImplInfo, Mutability, Payable, StructInfo};
+use syn::parse_quote;
 
 pub(crate) fn generate_struct(input: TokenStream, struct_info: StructInfo) -> TokenStream {
     let name = format_ident!("{}Test", struct_info.struct_name);
@@ -9,6 +9,7 @@ pub(crate) fn generate_struct(input: TokenStream, struct_info: StructInfo) -> To
     let mut generated_struct: TokenStream = quote! {
         #[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
         pub struct #name {
+            pub contract: workspaces::Contract,
     }}
     .into();
 
@@ -22,11 +23,15 @@ pub(crate) fn generate_impl(input: TokenStream, impl_info: ImplInfo) -> TokenStr
     for func_info in impl_info.func_infos {
         match &func_info.mutability {
             Mutability::Mutable(payable) => match payable {
-                Payable::Payable => func_stream_vec.push(generate_payable_function(func_info)),
-                Payable::NonPayable => func_stream_vec.push(generate_call_function(func_info)),
+                Payable::Payable => {
+                    func_stream_vec.push(generate_payable_function(&func_info));
+                }
+                Payable::NonPayable => {
+                    func_stream_vec.push(generate_call_function(&func_info));
+                }
             },
             Mutability::Immutable => {
-                func_stream_vec.push(generate_view_function(func_info));
+                func_stream_vec.push(generate_view_function(&func_info));
             }
         }
     }
@@ -61,59 +66,90 @@ fn json_serialize(func_info: &FunctionInfo) -> TokenStream {
     .into()
 }
 
-pub(crate) fn generate_view_function(func_info: FunctionInfo) -> TokenStream {
+pub(crate) fn generate_view_function(func_info: &FunctionInfo) -> TokenStream {
     let serialize_args = json_serialize(&func_info);
     let name = func_info.function_name.clone();
     let name_str = func_info.function_name.to_string();
     let params = func_info.params.clone();
-    let return_ident = quote! { -> integration_tests_toolset::ImmutablePendingTx };
+    let output = func_info.output.clone();
 
     let func = quote! {
-        #[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
-        pub fn #name(&self, #params) #return_ident {
+        pub async fn #name(&self, #params) -> integration_tests_toolset::Result<integration_tests_toolset::ViewResult<#output>> {
+            use integration_tests_toolset::View;
             #serialize_args
-            integration_tests_toolset::ImmutablePendingTx::new( String::from(#name_str), args)
+            let res = integration_tests_toolset::ImmutablePendingTx::new(&self.contract, String::from(#name_str), args).view().await?;
+            Ok(integration_tests_toolset::ViewResult{value: res.json()?, res})
         }
     };
 
     func
 }
 
-pub(crate) fn generate_call_function(func_info: FunctionInfo) -> TokenStream {
-    let serialize_args = json_serialize(&func_info);
+pub(crate) fn generate_call_function(func_info: &FunctionInfo) -> TokenStream {
+    let serialize_args = json_serialize(func_info);
     let name = func_info.function_name.clone();
     let name_str = func_info.function_name.to_string();
     let params = func_info.params.clone();
-    let return_ident = quote! { -> integration_tests_toolset::MutablePendingTx };
+    let output = func_info.output.clone();
 
-    let func = quote! {
-        pub fn #name(&self, #params) #return_ident {
-            #serialize_args
-            integration_tests_toolset::MutablePendingTx::new( String::from(#name_str), args)
+    let tx_call = if output == parse_quote! {()} {
+        quote! {
+            let res = integration_tests_toolset::MutablePendingTx::new(&self.contract, String::from(#name_str), args).call(caller).await?.into_result()?;
+            // TODO: check res.receipt_failures() for errors, rise TestError::Receipt(String) if there are any
+            // TODO:: check res.receipt_outcomes() for logs
+            Ok(integration_tests_toolset::CallResult{value: (), res})
+        }
+    } else {
+        quote! {
+            let res = integration_tests_toolset::MutablePendingTx::new(&self.contract, String::from(#name_str), args).call(caller).await?.into_result()?;
+            // TODO: check res.receipt_failures() for errors, rise TestError::Receipt(String) if there are any
+            // TODO:: check res.receipt_outcomes() for logs
+            Ok(integration_tests_toolset::CallResult{value:res.json()?, res})
         }
     };
 
-    func
+    quote! {
+        pub async fn #name(&self, caller: &workspaces::Account, #params) -> integration_tests_toolset::Result<integration_tests_toolset::CallResult<#output>> {
+            use integration_tests_toolset::Call;
+            #serialize_args
+            #tx_call
+        }
+    }
 }
 
-pub(crate) fn generate_payable_function(func_info: FunctionInfo) -> TokenStream {
+pub(crate) fn generate_payable_function(func_info: &FunctionInfo) -> TokenStream {
     let serialize_args = json_serialize(&func_info);
     let name = func_info.function_name.clone();
     let name_str = func_info.function_name.to_string();
     let params = func_info.params.clone();
-    let return_ident = quote! { -> integration_tests_toolset::PayablePendingTx };
+    let output = func_info.output.clone();
     let deposit_ident = if params.is_empty() || params.trailing_punct() {
         quote!(attached_deposit: u128)
     } else {
         quote!(,attached_deposit: u128)
     };
 
-    let func = quote! {
-        pub fn #name(&self, #params #deposit_ident) #return_ident {
-            #serialize_args
-            integration_tests_toolset::PayablePendingTx::new( String::from(#name_str), args, attached_deposit)
+    let tx_call = if output == parse_quote! {()} {
+        quote! {
+            let res = integration_tests_toolset::PayablePendingTx::new(&self.contract, String::from(#name_str), args, attached_deposit).call(caller).await?.into_result()?;
+            // TODO: check res.receipt_failures() for errors, rise TestError::Receipt(String) if there are any
+            // TODO:: check res.receipt_outcomes() for logs
+            Ok(integration_tests_toolset::CallResult{value: (), res})
+        }
+    } else {
+        quote! {
+            let res = integration_tests_toolset::PayablePendingTx::new(&self.contract, String::from(#name_str), args, attached_deposit).call(caller).await?.into_result()?;
+            // TODO: check res.receipt_failures() for errors, rise TestError::Receipt(String) if there are any
+            // TODO:: check res.receipt_outcomes() for logs
+            Ok(integration_tests_toolset::CallResult{value:res.json()?, res})
         }
     };
 
-    func
+    quote! {
+        pub async fn #name(&self, caller: &workspaces::Account, #params #deposit_ident) -> integration_tests_toolset::Result<integration_tests_toolset::CallResult<#output>> {
+            use integration_tests_toolset::Call;
+            #serialize_args
+            #tx_call
+        }
+    }
 }

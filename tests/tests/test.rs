@@ -1,5 +1,4 @@
 use anyhow::Ok;
-use integration_tests_toolset::{Call, View};
 use near_units::parse_near;
 use test_contract::TestContractTest;
 
@@ -13,33 +12,82 @@ async fn integration_test_example() -> anyhow::Result<()> {
 
     let user = worker.dev_create_account().await?;
 
-    let contract_template = TestContractTest {};
+    let contract_template = TestContractTest { contract };
 
-    let res = contract_template.test_get_state().view(&contract).await?;
-
-    assert_eq!(res.json::<u64>().unwrap(), 0);
-
-    let res = contract_template
-        .test_change_state()
-        .call(&contract, &user)
+    contract_template
+        .new(&contract_template.contract.as_account(), 10, 1u128)
         .await?;
 
-    assert!(res.is_success());
+    let res = contract_template.view_no_param_ret_u64().await?;
+    assert_eq!(res.value, 10);
 
-    let res = contract_template.test_get_state().view(&contract).await?;
-
-    assert_eq!(res.json::<u64>().unwrap(), 1);
-
+    // repeated init should fail
     let res = contract_template
-        .test_payable_change_state(parse_near!("1 yN"))
-        .call(&contract, &user)
+        .new(&contract_template.contract.as_account(), 11, 1u128)
+        .await;
+
+    assert!(res.is_err());
+
+    assert_eq!(
+        contract_template
+            .view_param_account_id_ret_account_id(user.id().clone().to_string().parse().unwrap())
+            .await?
+            .value,
+        user.id().to_string().parse().unwrap()
+    );
+
+    assert_eq!(
+        contract_template
+            .view_param_vec_account_id_ret_vec_account_id(vec![user
+                .id()
+                .to_string()
+                .parse()
+                .unwrap()])
+            .await?
+            .value,
+        vec![user.id().to_string().parse().unwrap()]
+    );
+
+    contract_template.migrate_state(&user).await?;
+
+    let res = contract_template.call_no_param_ret_u64(&user).await?;
+
+    assert_eq!(res.value, 1);
+
+    assert_eq!(contract_template.view_no_param_ret_u64().await?.value, 1);
+
+    contract_template
+        .call_no_param_no_ret_payable(&user, parse_near!("1 yN"))
         .await?;
 
-    assert!(res.is_success());
+    assert_eq!(contract_template.view_no_param_ret_u64().await?.value, 2);
 
-    let res = contract_template.test_get_state().view(&contract).await?;
+    let res = contract_template
+        .call_param_u64_ret_u64_handle_res(&user, 2)
+        .await?;
 
-    assert_eq!(res.json::<u64>().unwrap(), 2);
+    assert_eq!(res.value, 4);
+
+    let res = contract_template.view_no_param_ret_u64().await?;
+
+    assert_eq!(res.value, 4);
+
+    let res = contract_template.view_no_param_ret_error_handle_res().await;
+
+    assert!(res.is_err());
+
+    let res = contract_template.view_no_param_ret_error_handle_res().await;
+
+    let res = res.unwrap_err();
+    println!("res: {}", res);
+
+    let res = contract_template
+        .call_no_param_ret_error_handle_res(&user)
+        .await;
+
+    assert!(res.is_err());
+    let res = res.unwrap_err();
+    println!("res: {}", res);
 
     Ok(())
 }
