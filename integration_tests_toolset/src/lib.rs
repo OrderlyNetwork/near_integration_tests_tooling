@@ -1,134 +1,140 @@
 #[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
-use async_trait::async_trait;
-#[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
-use std::{future::Future, pin::Pin};
-#[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
-use workspaces::{
-    result::{ExecutionFinalResult, ViewResultDetails},
-    Account, Contract,
-};
+mod toolset {
+    use async_trait::async_trait;
+    use thiserror::Error;
+    use workspaces::{
+        result::{ExecutionFinalResult, ExecutionResult, Value, ViewResultDetails},
+        Account, Contract,
+    };
 
-#[allow(dead_code)]
-#[derive(Debug)]
-pub struct MutablePendingTx {
-    function_name: String,
-    args: Vec<u8>,
-}
-
-#[allow(dead_code)]
-#[derive(Debug)]
-pub struct ImmutablePendingTx {
-    function_name: String,
-    args: Vec<u8>,
-}
-
-#[allow(dead_code)]
-#[derive(Debug)]
-pub struct PayablePendingTx {
-    function_name: String,
-    args: Vec<u8>,
-    attached_deposit: u128,
-}
-
-impl ImmutablePendingTx {
-    pub fn new(function_name: String, args: Vec<u8>) -> Self {
-        Self {
-            function_name,
-            args,
-        }
-    }
-}
-
-impl MutablePendingTx {
-    pub fn new(function_name: String, args: Vec<u8>) -> Self {
-        Self {
-            function_name,
-            args,
-        }
-    }
-}
-
-impl PayablePendingTx {
-    pub fn new(function_name: String, args: Vec<u8>, attached_deposit: u128) -> Self {
-        Self {
-            function_name,
-            args,
-            attached_deposit,
-        }
-    }
-}
-
-#[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
-pub trait View {
-    fn view<'a>(
-        self,
+    #[derive(Debug)]
+    pub struct MutablePendingTx<'a> {
         contract: &'a Contract,
-    ) -> Pin<Box<dyn Future<Output = workspaces::result::Result<ViewResultDetails>> + Send + 'a>>;
-}
+        function_name: String,
+        args: Vec<u8>,
+    }
 
-#[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
-#[async_trait]
-pub trait Call {
-    async fn call<'a>(
-        self,
-        contract: &Contract,
-        caller: &Account,
-    ) -> workspaces::result::Result<ExecutionFinalResult>;
-}
-
-#[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
-impl View for ImmutablePendingTx {
-    fn view<'a>(
-        self,
+    #[derive(Debug)]
+    pub struct ImmutablePendingTx<'a> {
         contract: &'a Contract,
-    ) -> Pin<Box<dyn Future<Output = workspaces::result::Result<ViewResultDetails>> + Send + 'a>>
-    {
-        async fn run(
-            pending_tx: ImmutablePendingTx,
-            contract: &Contract,
-        ) -> workspaces::result::Result<ViewResultDetails> {
-            contract
-                .call(&pending_tx.function_name)
-                .args(pending_tx.args)
+        function_name: String,
+        args: Vec<u8>,
+    }
+
+    #[derive(Debug)]
+    pub struct PayablePendingTx<'a> {
+        contract: &'a Contract,
+        function_name: String,
+        args: Vec<u8>,
+        attached_deposit: u128,
+    }
+
+    impl<'a> ImmutablePendingTx<'a> {
+        pub fn new(contract: &'a Contract, function_name: String, args: Vec<u8>) -> Self {
+            Self {
+                contract,
+                function_name,
+                args,
+            }
+        }
+    }
+
+    impl<'a> MutablePendingTx<'a> {
+        pub fn new(contract: &'a Contract, function_name: String, args: Vec<u8>) -> Self {
+            Self {
+                contract,
+                function_name,
+                args,
+            }
+        }
+    }
+
+    impl<'a> PayablePendingTx<'a> {
+        pub fn new(
+            contract: &'a Contract,
+            function_name: String,
+            args: Vec<u8>,
+            attached_deposit: u128,
+        ) -> Self {
+            Self {
+                contract,
+                function_name,
+                args,
+                attached_deposit,
+            }
+        }
+    }
+
+    #[async_trait]
+    pub trait View {
+        async fn view(self) -> workspaces::result::Result<ViewResultDetails>;
+    }
+
+    #[async_trait]
+    pub trait Call {
+        async fn call(self, caller: &Account) -> workspaces::result::Result<ExecutionFinalResult>;
+    }
+
+    #[async_trait]
+    impl<'a> View for ImmutablePendingTx<'a> {
+        async fn view(self) -> workspaces::result::Result<ViewResultDetails> {
+            self.contract
+                .call(&self.function_name)
+                .args(self.args)
                 .view()
                 .await
         }
-
-        Box::pin(run(self, contract))
     }
+
+    #[async_trait]
+    impl<'a> Call for MutablePendingTx<'a> {
+        async fn call(self, caller: &Account) -> workspaces::result::Result<ExecutionFinalResult> {
+            caller
+                .call(&self.contract.id(), &self.function_name)
+                .args(self.args)
+                .max_gas()
+                .transact()
+                .await
+        }
+    }
+
+    #[async_trait]
+    impl<'a> Call for PayablePendingTx<'a> {
+        async fn call(self, caller: &Account) -> workspaces::result::Result<ExecutionFinalResult> {
+            caller
+                .call(&self.contract.id(), &self.function_name)
+                .args(self.args)
+                .deposit(self.attached_deposit)
+                .max_gas()
+                .transact()
+                .await
+        }
+    }
+
+    #[derive(Debug)]
+    pub struct ViewResult<T> {
+        pub value: T,
+        pub res: ViewResultDetails,
+    }
+
+    #[derive(Debug)]
+    pub struct CallResult<T> {
+        pub value: T,
+        pub res: ExecutionResult<Value>,
+    }
+
+    #[derive(Debug, Error)]
+    pub enum TestError {
+        #[error("Workspace error: {:?}", _0)]
+        Workspace(#[from] workspaces::error::Error),
+        #[error("Execution failure: {}", _0)]
+        ExecutionFailure(#[from] workspaces::result::ExecutionFailure),
+        #[error("Internal receipt failure: {:?}", _0)]
+        ReceiptFailure(#[from] workspaces::error::ErrorKind),
+    }
+
+    pub type Result<T> = std::result::Result<T, TestError>;
 }
 
 #[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
-#[async_trait]
-impl Call for MutablePendingTx {
-    async fn call<'a>(
-        self,
-        contract: &Contract,
-        caller: &Account,
-    ) -> workspaces::result::Result<ExecutionFinalResult> {
-        caller
-            .call(contract.id(), &self.function_name)
-            .args(self.args)
-            .max_gas()
-            .transact()
-            .await
-    }
-}
-
-#[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
-#[async_trait]
-impl Call for PayablePendingTx {
-    async fn call<'a>(
-        self,
-        contract: &Contract,
-        caller: &Account,
-    ) -> workspaces::result::Result<ExecutionFinalResult> {
-        caller
-            .call(contract.id(), &self.function_name)
-            .args(self.args)
-            .deposit(self.attached_deposit)
-            .max_gas()
-            .transact()
-            .await
-    }
-}
+pub use toolset::*;

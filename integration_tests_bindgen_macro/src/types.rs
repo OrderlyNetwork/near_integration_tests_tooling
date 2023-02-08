@@ -1,5 +1,5 @@
 use proc_macro2::Ident;
-use syn::{punctuated::Punctuated, FnArg, Token};
+use syn::{punctuated::Punctuated, FnArg, Token, Type};
 
 #[derive(Debug)]
 pub(crate) enum Mutability {
@@ -25,6 +25,7 @@ pub(crate) struct FunctionInfo {
     pub params: Punctuated<FnArg, Token![,]>,
     pub params_ident: Vec<Ident>,
     pub mutability: Mutability,
+    pub output: Type,
 }
 
 #[derive(Debug)]

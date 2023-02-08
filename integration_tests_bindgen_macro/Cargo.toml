@@ -11,6 +11,6 @@ path = "src/lib.rs"
 proc-macro = true
 
 [target.'cfg(not(all(target_arch = "wasm32", target_os = "unknown")))'.dependencies]
-syn = { version = "*", features = ["extra-traits"] }
+syn = { version = "*", features = ["extra-traits", "visit-mut"] }
 quote = "*"
 proc-macro2 = "*"

@@ -7,6 +7,12 @@ use parse::{parse_func_info, parse_struct_info};
 use proc_macro::{Span, TokenStream};
 use syn::{Attribute, ItemImpl, ItemStruct};
 
+macro_rules! compile_error {
+    ($($tt:tt)*) => {
+        return syn::Error::new(Span::call_site().into(), format!($($tt)*)).to_compile_error().into()
+    }
+}
+
 #[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
 #[proc_macro_attribute]
 pub fn integration_tests_bindgen(_args: TokenStream, input: TokenStream) -> TokenStream {
@@ -15,36 +21,19 @@ pub fn integration_tests_bindgen(_args: TokenStream, input: TokenStream) -> Toke
             let struct_info = parse_struct_info(item);
             generate_struct(input.into(), struct_info).into()
         } else {
-            TokenStream::from(
-                syn::Error::new(
-                    Span::call_site().into(),
-                    "integration_tests_bind_gen can only be used in pair with near_bindgen.",
-                )
-                .to_compile_error(),
-            )
+            compile_error!("integration_tests_bind_gen can only be used in pair with near_bindgen.")
         }
     } else if let Ok(item) = syn::parse::<ItemImpl>(input.clone()) {
         if is_marked_near_bindgen(&item.attrs) {
             let func_info = parse_func_info(item);
-
             generate_impl(input.into(), func_info).into()
         } else {
-            TokenStream::from(
-                syn::Error::new(
-                    Span::call_site().into(),
-                    "integration_tests_bind_gen can only be used in pair with near_bindgen.",
-                )
-                .to_compile_error(),
-            )
+            compile_error!("integration_tests_bind_gen can only be used in pair with near_bindgen.")
         }
     } else {
-        TokenStream::from(
-                syn::Error::new(
-                    Span::call_site().into(),
-                    "integration_tests_bind_gen can only be used on type declarations and impl sections.",
-                )
-                .to_compile_error(),
-            )
+        compile_error!(
+            "integration_tests_bind_gen can only be used on type declarations and impl sections."
+        )
     }
 }
 
@@ -55,6 +44,10 @@ pub fn integration_tests_bindgen(_args: TokenStream, input: TokenStream) -> Toke
 }
 
 fn is_marked_near_bindgen(attrs: &Vec<Attribute>) -> bool {
+    has_attribute(attrs, "near_bindgen")
+}
+
+pub(crate) fn has_attribute(attrs: &Vec<Attribute>, name: &str) -> bool {
     attrs
         .iter()
         .map(|attr| attr.parse_meta())
@@ -63,7 +56,7 @@ fn is_marked_near_bindgen(attrs: &Vec<Attribute>) -> bool {
                 .path()
                 .get_ident()
                 .map(|el| el.to_string())
-                .filter(|el| *el == String::from("near_bindgen"))
+                .filter(|el| *el == String::from(name))
                 .is_some(),
             Err(_) => false,
         })
