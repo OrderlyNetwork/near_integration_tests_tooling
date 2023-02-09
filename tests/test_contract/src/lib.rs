@@ -1,13 +1,6 @@
 use integration_tests_bindgen_macro::integration_tests_bindgen;
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::serde::{Deserialize, Serialize};
 use near_sdk::{assert_one_yocto, env, near_bindgen, AccountId};
-
-#[derive(Serialize, Deserialize)]
-#[serde(crate = "near_sdk::serde")]
-pub struct TestAccountIdWrapper {
-    pub account_id: AccountId,
-}
 
 #[integration_tests_bindgen]
 #[near_bindgen]
@@ -58,31 +51,6 @@ impl TestContract {
 
     pub fn view_param_account_id_ret_account_id(&self, account: AccountId) -> AccountId {
         account
-    }
-
-    pub fn view_param_tuple_with_account_id(&self, tuple: (AccountId, u64)) -> AccountId {
-        tuple.0
-    }
-
-    pub fn view_param_arr_tuples_with_account_id(
-        &self,
-        arr_tuple: [(AccountId, u64); 1],
-    ) -> AccountId {
-        arr_tuple.first().unwrap().0.clone()
-    }
-
-    pub fn view_param_vec_tuple_of_vec_tuples_with_account_id(
-        &self,
-        vec_tuple: Vec<(Vec<(AccountId, u64)>, u64)>,
-    ) -> AccountId {
-        vec_tuple.first().unwrap().0.first().unwrap().0.clone()
-    }
-
-    pub fn view_param_vec_tuple_with_account_id(
-        &self,
-        vec_tuple: Vec<(AccountId, u64)>,
-    ) -> AccountId {
-        vec_tuple.first().unwrap().0.clone()
     }
 
     pub fn view_param_vec_account_id_ret_vec_account_id(
