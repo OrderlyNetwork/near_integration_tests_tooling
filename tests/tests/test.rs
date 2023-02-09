@@ -12,10 +12,13 @@ async fn integration_test_example() -> anyhow::Result<()> {
 
     let user = worker.dev_create_account().await?;
 
-    let contract_template = TestContractTest { contract };
+    let contract_template = TestContractTest {
+        contract,
+        measure_storage_usage: true,
+    };
 
     contract_template
-        .new(&contract_template.contract.as_account(), 10, 1u128)
+        .new(10, &contract_template.contract.as_account(), 1u128)
         .await?;
 
     let res = contract_template.view_no_param_ret_u64().await?;
@@ -23,7 +26,7 @@ async fn integration_test_example() -> anyhow::Result<()> {
 
     // repeated init should fail
     let res = contract_template
-        .new(&contract_template.contract.as_account(), 11, 1u128)
+        .new(11, &contract_template.contract.as_account(), 1u128)
         .await;
 
     assert!(res.is_err());
@@ -63,7 +66,7 @@ async fn integration_test_example() -> anyhow::Result<()> {
     assert_eq!(contract_template.view_no_param_ret_u64().await?.value, 2);
 
     let res = contract_template
-        .call_param_u64_ret_u64_handle_res(&user, 2)
+        .call_param_u64_ret_u64_handle_res(2, &user)
         .await?;
 
     assert_eq!(res.value, 4);

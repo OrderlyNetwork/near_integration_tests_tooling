@@ -115,12 +115,14 @@ mod toolset {
     pub struct ViewResult<T> {
         pub value: T,
         pub res: ViewResultDetails,
+        pub storage_usage: Option<i64>,
     }
 
     #[derive(Debug)]
     pub struct CallResult<T> {
         pub value: T,
         pub res: ExecutionResult<Value>,
+        pub storage_usage: Option<i64>,
     }
 
     #[derive(Debug, Error)]
