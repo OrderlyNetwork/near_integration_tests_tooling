@@ -33,22 +33,45 @@ async fn integration_test_example() -> anyhow::Result<()> {
 
     assert_eq!(
         contract_template
-            .view_param_account_id_ret_account_id(user.id().clone().to_string().parse().unwrap())
+            .view_param_account_id_ret_account_id(user.id().clone())
             .await?
             .value,
-        user.id().to_string().parse().unwrap()
+        user.id().clone()
     );
 
     assert_eq!(
         contract_template
-            .view_param_vec_account_id_ret_vec_account_id(vec![user
-                .id()
-                .to_string()
-                .parse()
-                .unwrap()])
+            .view_param_vec_tuple_with_account_id(vec![(user.id().clone(), 1)])
             .await?
             .value,
-        vec![user.id().to_string().parse().unwrap()]
+        user.id().clone()
+    );
+
+    assert_eq!(
+        contract_template
+            .view_param_arr_tuples_with_account_id([(user.id().clone(), 1)])
+            .await?
+            .value,
+        user.id().clone()
+    );
+
+    assert_eq!(
+        contract_template
+            .view_param_vec_tuple_of_vec_tuples_with_account_id(vec![(
+                vec![(user.id().clone(), 1)],
+                1
+            )])
+            .await?
+            .value,
+        user.id().clone()
+    );
+
+    assert_eq!(
+        contract_template
+            .view_param_vec_account_id_ret_vec_account_id(vec![user.id().clone()])
+            .await?
+            .value,
+        vec![user.id().clone()]
     );
 
     contract_template.migrate_state(&user).await?;

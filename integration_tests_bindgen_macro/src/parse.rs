@@ -6,11 +6,11 @@ use proc_macro2::{Ident, Span};
 use quote::format_ident;
 use syn::{
     parse_quote,
-    punctuated::{IntoPairs, Pair, Punctuated},
+    punctuated::{IntoPairs, Punctuated},
     token::Comma,
     visit_mut::VisitMut,
-    FnArg, ImplItem, ImplItemMethod, ItemImpl, ItemStruct, Pat, PatType, PathArguments, ReturnType,
-    Type, TypePath, Visibility,
+    FnArg, GenericArgument, ImplItem, ImplItemMethod, ItemImpl, ItemStruct, Pat, PathArguments,
+    PathSegment, ReturnType, Type, TypePath, Visibility,
 };
 
 pub(crate) fn parse_struct_info(ast: ItemStruct) -> StructInfo {
@@ -109,8 +109,8 @@ fn get_output(output: &ReturnType, handle_result: bool, is_init: bool) -> Type {
                     if path.ident == "Result" && handle_result {
                         if let PathArguments::AngleBracketed(aba) = &path.arguments {
                             if let Some(ga) = aba.args.first() {
-                                if let syn::GenericArgument::Type(gaty) = ga {
-                                    ret = gaty.clone();
+                                if let syn::GenericArgument::Type(ga_ty) = ga {
+                                    ret = ga_ty.clone();
                                 }
                             }
                         }
@@ -119,39 +119,23 @@ fn get_output(output: &ReturnType, handle_result: bool, is_init: bool) -> Type {
             }
         }
     }
+    AccountIdReplace.visit_type_mut(&mut ret);
     ret
 }
 
 fn get_params(params_iter: &IntoPairs<FnArg, Comma>) -> Punctuated<FnArg, Comma> {
-    Punctuated::from_iter(params_iter.clone().into_iter().map(|el| match el.value() {
-        FnArg::Receiver(_) => el,
-        FnArg::Typed(PatType {
-            attrs,
-            pat,
-            colon_token,
-            ty,
-        }) => {
-            // TODO: iterate type in deep to convert all AccountId (like Vec<AccountId>)
-            if let Type::Path(ty) = &**ty {
-                if ty.path.is_ident("AccountId") {
-                    // TODO: uncomment code below when deep iteration is implemented
-                    let type_path = ty.clone();
-                    // let mut type_path = ty.clone();
-                    // AccountIdReplace.visit_type_path_mut(&mut type_path);
-                    let res = FnArg::Typed(PatType {
-                        attrs: attrs.clone(),
-                        pat: pat.clone(),
-                        colon_token: colon_token.clone(),
-                        ty: Box::from(Type::Path(type_path)),
-                    });
-                    return Pair::new(res, el.punct().cloned());
+    Punctuated::from_iter(
+        params_iter
+            .clone()
+            .into_iter()
+            .map(|mut el| match el.value_mut() {
+                FnArg::Receiver(_) => el,
+                FnArg::Typed(pat_type) => {
+                    AccountIdReplace.visit_type_mut(pat_type.ty.as_mut());
+                    el
                 }
-                el
-            } else {
-                el
-            }
-        }
-    }))
+            }),
+    )
 }
 
 fn get_idents(params_iter: &IntoPairs<FnArg, Comma>) -> Vec<Ident> {
@@ -171,7 +155,36 @@ fn get_idents(params_iter: &IntoPairs<FnArg, Comma>) -> Vec<Ident> {
 struct AccountIdReplace;
 
 impl VisitMut for AccountIdReplace {
-    fn visit_type_path_mut(&mut self, type_path: &mut TypePath) {
-        *type_path = parse_quote!(workspaces::AccountId);
+    fn visit_type_mut(&mut self, ty: &mut Type) {
+        match ty {
+            Type::Array(type_arr) => self.visit_type_mut(type_arr.elem.as_mut()),
+            Type::Path(type_path) => self.visit_type_path_mut(type_path),
+            Type::Tuple(type_typle) => type_typle
+                .elems
+                .iter_mut()
+                .for_each(|el| self.visit_type_mut(el)),
+            _ => return,
+        }
+    }
+
+    fn visit_type_path_mut(&mut self, ty: &mut TypePath) {
+        if ty.path.is_ident("AccountId") {
+            *ty = parse_quote!(workspaces::AccountId);
+        } else if let Some(path_segment) = ty.path.segments.first_mut() {
+            self.visit_path_segment_mut(path_segment);
+        }
+    }
+
+    fn visit_path_segment_mut(&mut self, path_segment: &mut PathSegment) {
+        if path_segment.ident.to_string().contains("Vec") {
+            if let PathArguments::AngleBracketed(angl_bracketed) = &mut path_segment.arguments {
+                if let Some(gen_arg) = angl_bracketed.args.first_mut() {
+                    if let GenericArgument::Type(ty) = gen_arg {
+                        self.visit_type_mut(ty);
+                        return;
+                    }
+                }
+            }
+        }
     }
 }
