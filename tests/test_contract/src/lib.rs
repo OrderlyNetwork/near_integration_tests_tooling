@@ -15,7 +15,7 @@ impl Default for TestContract {
     }
 }
 
-#[integration_tests_bindgen(convert_account_ids)]
+#[integration_tests_bindgen]
 #[near_bindgen]
 impl TestContract {
     #[init]
