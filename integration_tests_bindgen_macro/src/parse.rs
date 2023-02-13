@@ -19,6 +19,10 @@ pub(crate) fn parse_struct_info(ast: ItemStruct) -> StructInfo {
     }
 }
 
+// TODO: parse macro like
+// near_contract_standards::impl_fungible_token_core!(Contract, token);
+// Note: it unwraps in several #[near_bindgen] impls
+
 pub(crate) fn parse_func_info(ast: ItemImpl) -> ImplInfo {
     let impl_ident = match *ast.self_ty.clone() {
         syn::Type::Path(path) => path
@@ -163,6 +167,7 @@ impl VisitMut for AccountIdReplace {
                 .elems
                 .iter_mut()
                 .for_each(|el| self.visit_type_mut(el)),
+            Type::Reference(type_ref) => self.visit_type_mut(type_ref.elem.as_mut()),
             _ => return,
         }
     }
@@ -176,7 +181,9 @@ impl VisitMut for AccountIdReplace {
     }
 
     fn visit_path_segment_mut(&mut self, path_segment: &mut PathSegment) {
-        if path_segment.ident.to_string().contains("Vec") {
+        if path_segment.ident.to_string().contains("Vec")
+            || path_segment.ident.to_string().contains("Option")
+        {
             if let PathArguments::AngleBracketed(angl_bracketed) = &mut path_segment.arguments {
                 if let Some(gen_arg) = angl_bracketed.args.first_mut() {
                     if let GenericArgument::Type(ty) = gen_arg {

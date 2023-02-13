@@ -8,7 +8,7 @@ pub(crate) fn generate_struct(input: TokenStream, struct_info: StructInfo) -> To
 
     let mut generated_struct: TokenStream = quote! {
         #[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
-        #[derive(Clone)]
+        #[derive(Clone, Debug)]
         pub struct #name {
             pub contract: workspaces::Contract,
             pub measure_storage_usage: bool,
@@ -73,7 +73,7 @@ pub(crate) fn generate_view_function(func_info: &FunctionInfo) -> TokenStream {
     let name_str = func_info.function_name.to_string();
     generate_function(
         func_info,
-        quote! {let res = integration_tests_toolset::ImmutablePendingTx::new(&self.contract, String::from(#name_str), args).view().await?;},
+        quote! {integration_tests_toolset::ImmutablePendingTx::new(&self.contract, String::from(#name_str), args).view().await?;},
         quote! {integration_tests_toolset::ViewResult},
         quote! {},
         quote! {use integration_tests_toolset::View;},
@@ -84,7 +84,7 @@ pub(crate) fn generate_non_payable_call_function(func_info: &FunctionInfo) -> To
     let name_str = func_info.function_name.to_string();
     generate_function(
         func_info,
-        quote! {let res = integration_tests_toolset::MutablePendingTx::new(&self.contract, String::from(#name_str), args).call(caller).await?.into_result()?;},
+        quote! {integration_tests_toolset::MutablePendingTx::new(&self.contract, String::from(#name_str), args).call(caller).await?;},
         quote! {integration_tests_toolset::CallResult},
         quote! {caller: &workspaces::Account},
         quote! {use integration_tests_toolset::Call;},
@@ -95,7 +95,7 @@ pub(crate) fn generate_payable_call_function(func_info: &FunctionInfo) -> TokenS
     let name_str = func_info.function_name.to_string();
     generate_function(
         func_info,
-        quote! {let res = integration_tests_toolset::PayablePendingTx::new(&self.contract, String::from(#name_str), args, attached_deposit).call(caller).await?.into_result()?;},
+        quote! {integration_tests_toolset::PayablePendingTx::new(&self.contract, String::from(#name_str), args, attached_deposit).call(caller).await?;},
         quote! {integration_tests_toolset::CallResult},
         quote! {caller: &workspaces::Account, attached_deposit: u128},
         quote! {use integration_tests_toolset::Call;},
@@ -111,40 +111,31 @@ pub(crate) fn generate_function(
 ) -> TokenStream {
     let serialize_args = json_serialize(&func_info);
     let name = func_info.function_name.clone();
+    let name_str = func_info.function_name.to_string();
     let mut params = func_info.params.clone();
     if !params.is_empty() && !params.trailing_punct() {
         params.push_punct(Comma::default());
     }
     let output = func_info.output.clone();
 
-    let operation_with_storage_measure = quote! {
-        let (res, storage_usage) = if self.measure_storage_usage {
-            let storage_usage_before = self.contract.view_account().await?.storage_usage;
-            #operation
-            let storage_usage_after = self.contract.view_account().await?.storage_usage;
-            (res, Some(storage_usage_after as i64 - storage_usage_before as i64))
-        } else {
-            #operation
-            (res, None)
-        };
-    };
-
     let value = if output == parse_quote! {()} {
         quote! {()}
     } else {
-        quote! {res.json()?}
+        quote! {#ret_type::value_from_res(&res)?}
     };
 
     let tx_call = quote! {
-        #operation_with_storage_measure
-        // For mutable functions:
-        // TODO: check res.receipt_failures() for errors, rise TestError::Receipt(String) if there are any
-        // TODO:: check res.receipt_outcomes() for logs
-        Ok(#ret_type{value: #value, res, storage_usage})
+        let storage_usage_before = if self.measure_storage_usage { self.contract.view_account().await?.storage_usage } else { 0 };
+        let res = #operation
+        let storage_usage = if self.measure_storage_usage { Some(self.contract.view_account().await?.storage_usage as i64 - storage_usage_before as i64) } else { None };
+
+        res.check_res_log_failures()?;
+        #ret_type::from_res(#name_str.to_owned(), #value, storage_usage, res)
     };
 
     quote! {
-        pub async fn #name(&self, #params #additional_params) -> integration_tests_toolset::Result<#ret_type<#output>> {
+        pub async fn #name(&self, #params #additional_params) -> integration_tests_toolset::Result<integration_tests_toolset::TxResult<#output>> {
+            use integration_tests_toolset::{FromRes, ResLogger};
             #use_tx_trait
             #serialize_args
             #tx_call

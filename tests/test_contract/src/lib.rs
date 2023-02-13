@@ -97,6 +97,18 @@ impl TestContract {
         Err("View function rised error!")
     }
 
+    pub fn view_account_id(&self, account: AccountId) -> AccountId {
+        account
+    }
+
+    pub fn view_ref_account_id(&self, account: &AccountId) -> AccountId {
+        account.clone()
+    }
+
+    pub fn view_option_account_id(&self, account: Option<AccountId>) -> Option<AccountId> {
+        account
+    }
+
     pub fn call_no_param_ret_u64(&mut self) -> u64 {
         self.state += 1;
         self.state

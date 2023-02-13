@@ -1,4 +1,5 @@
 use anyhow::Ok;
+use integration_tests_toolset::GasUsage;
 use near_units::parse_near;
 use test_contract::TestContractTest;
 
@@ -17,9 +18,13 @@ async fn integration_test_example() -> anyhow::Result<()> {
         measure_storage_usage: true,
     };
 
+    let mut gas_usage = GasUsage::new();
+    let mut statistic_consumers = [&mut gas_usage];
+
     contract_template
         .new(10, &contract_template.contract.as_account(), 1u128)
-        .await?;
+        .await?
+        .populate_statistic(&mut statistic_consumers);
 
     let res = contract_template.view_no_param_ret_u64().await?;
     assert_eq!(res.value, 10);
@@ -35,6 +40,7 @@ async fn integration_test_example() -> anyhow::Result<()> {
         contract_template
             .view_param_account_id_ret_account_id(user.id().clone())
             .await?
+            .populate_statistic(&mut statistic_consumers)
             .value,
         user.id().clone()
     );
@@ -43,6 +49,7 @@ async fn integration_test_example() -> anyhow::Result<()> {
         contract_template
             .view_param_vec_tuple_with_account_id(vec![(user.id().clone(), 1)])
             .await?
+            .populate_statistic(&mut statistic_consumers)
             .value,
         user.id().clone()
     );
@@ -51,6 +58,7 @@ async fn integration_test_example() -> anyhow::Result<()> {
         contract_template
             .view_param_arr_tuples_with_account_id([(user.id().clone(), 1)])
             .await?
+            .populate_statistic(&mut statistic_consumers)
             .value,
         user.id().clone()
     );
@@ -62,6 +70,7 @@ async fn integration_test_example() -> anyhow::Result<()> {
                 1
             )])
             .await?
+            .populate_statistic(&mut statistic_consumers)
             .value,
         user.id().clone()
     );
@@ -70,31 +79,57 @@ async fn integration_test_example() -> anyhow::Result<()> {
         contract_template
             .view_param_vec_account_id_ret_vec_account_id(vec![user.id().clone()])
             .await?
+            .populate_statistic(&mut statistic_consumers)
             .value,
         vec![user.id().clone()]
     );
 
-    contract_template.migrate_state(&user).await?;
+    contract_template
+        .migrate_state(&user)
+        .await?
+        .populate_statistic(&mut statistic_consumers);
 
-    let res = contract_template.call_no_param_ret_u64(&user).await?;
+    let res = contract_template
+        .call_no_param_ret_u64(&user)
+        .await?
+        .populate_statistic(&mut statistic_consumers);
 
     assert_eq!(res.value, 1);
 
-    assert_eq!(contract_template.view_no_param_ret_u64().await?.value, 1);
+    assert_eq!(
+        contract_template
+            .view_no_param_ret_u64()
+            .await?
+            .populate_statistic(&mut statistic_consumers)
+            .value,
+        1
+    );
 
     contract_template
         .call_no_param_no_ret_payable(&user, parse_near!("1 yN"))
-        .await?;
+        .await?
+        .populate_statistic(&mut statistic_consumers);
 
-    assert_eq!(contract_template.view_no_param_ret_u64().await?.value, 2);
+    assert_eq!(
+        contract_template
+            .view_no_param_ret_u64()
+            .await?
+            .populate_statistic(&mut statistic_consumers)
+            .value,
+        2
+    );
 
     let res = contract_template
         .call_param_u64_ret_u64_handle_res(2, &user)
-        .await?;
+        .await?
+        .populate_statistic(&mut statistic_consumers);
 
-    assert_eq!(res.value, 4);
+    assert_eq!(res.populate_statistic(&mut statistic_consumers).value, 4);
 
-    let res = contract_template.view_no_param_ret_u64().await?;
+    let res = contract_template
+        .view_no_param_ret_u64()
+        .await?
+        .populate_statistic(&mut statistic_consumers);
 
     assert_eq!(res.value, 4);
 
@@ -114,6 +149,16 @@ async fn integration_test_example() -> anyhow::Result<()> {
     assert!(res.is_err());
     let res = res.unwrap_err();
     println!("res: {}", res);
+
+    dbg!(gas_usage);
+
+    contract_template.view_account_id(user.id().clone()).await?;
+
+    contract_template.view_ref_account_id(user.id()).await?;
+
+    contract_template
+        .view_option_account_id(Some(user.id().clone()))
+        .await?;
 
     Ok(())
 }

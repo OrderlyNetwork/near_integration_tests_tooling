@@ -8,4 +8,7 @@ edition = "2021"
 [target.'cfg(not(all(target_arch = "wasm32", target_os = "unknown")))'.dependencies]
 workspaces = "0.7.0"
 async-trait = "0.1.63"
+owo-colors = "3"
+prettytable-rs = "0.10"
+serde = "1"
 thiserror = "1"
