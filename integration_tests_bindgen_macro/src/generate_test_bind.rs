@@ -73,10 +73,10 @@ pub(crate) fn generate_view_function(func_info: &FunctionInfo) -> TokenStream {
     let name_str = func_info.function_name.to_string();
     generate_function(
         func_info,
-        quote! {integration_tests_toolset::ImmutablePendingTx::new(&self.contract, String::from(#name_str), args).view().await?;},
-        quote! {integration_tests_toolset::ViewResult},
+        quote! {integration_tests_toolset::pending_tx::immutable_tx::ImmutablePendingTx::new(&self.contract, String::from(#name_str), args).view().await?;},
+        quote! {integration_tests_toolset::tx_result::ViewResult},
         quote! {},
-        quote! {use integration_tests_toolset::View;},
+        quote! {use integration_tests_toolset::pending_tx::view::View;},
     )
 }
 
@@ -84,10 +84,10 @@ pub(crate) fn generate_non_payable_call_function(func_info: &FunctionInfo) -> To
     let name_str = func_info.function_name.to_string();
     generate_function(
         func_info,
-        quote! {integration_tests_toolset::MutablePendingTx::new(&self.contract, String::from(#name_str), args).call(caller).await?;},
-        quote! {integration_tests_toolset::CallResult},
+        quote! {integration_tests_toolset::pending_tx::mutable_tx::MutablePendingTx::new(&self.contract, String::from(#name_str), args).call(caller).await?;},
+        quote! {integration_tests_toolset::tx_result::CallResult},
         quote! {caller: &workspaces::Account},
-        quote! {use integration_tests_toolset::Call;},
+        quote! {use integration_tests_toolset::pending_tx::call::Call;},
     )
 }
 
@@ -95,10 +95,10 @@ pub(crate) fn generate_payable_call_function(func_info: &FunctionInfo) -> TokenS
     let name_str = func_info.function_name.to_string();
     generate_function(
         func_info,
-        quote! {integration_tests_toolset::PayablePendingTx::new(&self.contract, String::from(#name_str), args, attached_deposit).call(caller).await?;},
-        quote! {integration_tests_toolset::CallResult},
+        quote! {integration_tests_toolset::pending_tx::payable_tx::PayablePendingTx::new(&self.contract, String::from(#name_str), args, attached_deposit).call(caller).await?;},
+        quote! {integration_tests_toolset::tx_result::CallResult},
         quote! {caller: &workspaces::Account, attached_deposit: u128},
-        quote! {use integration_tests_toolset::Call;},
+        quote! {use integration_tests_toolset::pending_tx::call::Call;},
     )
 }
 
@@ -134,8 +134,8 @@ pub(crate) fn generate_function(
     };
 
     quote! {
-        pub async fn #name(&self, #params #additional_params) -> integration_tests_toolset::Result<integration_tests_toolset::TxResult<#output>> {
-            use integration_tests_toolset::{FromRes, ResLogger};
+        pub async fn #name(&self, #params #additional_params) -> integration_tests_toolset::error::Result<integration_tests_toolset::tx_result::TxResult<#output>> {
+            use integration_tests_toolset::{tx_result::FromRes, res_logger::ResLogger};
             #use_tx_trait
             #serialize_args
             #tx_call

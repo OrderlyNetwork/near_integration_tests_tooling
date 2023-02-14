@@ -1,5 +1,5 @@
 use anyhow::Ok;
-use integration_tests_toolset::GasUsage;
+use integration_tests_toolset::statistic::gas_usage_aggregator::GasUsage;
 use near_units::parse_near;
 use test_contract::TestContractTest;
 
