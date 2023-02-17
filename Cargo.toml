@@ -2,6 +2,7 @@
 members = [
     "integration_tests_bindgen_macro",
     "integration_tests_toolset",
-    
+    "test_context",
+    "test_token",
     "tests"
 ]

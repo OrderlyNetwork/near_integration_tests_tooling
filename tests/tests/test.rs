@@ -1,7 +1,14 @@
-use anyhow::Ok;
-use integration_tests_toolset::statistic::gas_usage_aggregator::GasUsage;
+use async_trait::async_trait;
+use integration_tests_toolset::{error::TestError, statistic::gas_usage_aggregator::GasUsage};
 use near_units::parse_near;
+use std::collections::HashMap;
+use test_context::{
+    context::initialize_context,
+    contract_controller::{ContractController, ContractInitializer},
+    token_info::{eth, TokenInitialInfo},
+};
 use test_contract::TestContractTest;
+use workspaces::AccountId;
 
 #[tokio::test]
 async fn integration_test_example() -> anyhow::Result<()> {
@@ -159,6 +166,144 @@ async fn integration_test_example() -> anyhow::Result<()> {
     contract_template
         .view_option_account_id(Some(user.id().clone()))
         .await?;
+
+    Ok(())
+}
+
+pub struct Initializer {}
+
+#[async_trait]
+impl ContractInitializer<TestContractTest> for Initializer {
+    fn get_id(&self) -> AccountId {
+        "any_acc.test.near".parse().unwrap()
+    }
+
+    fn get_wasm(&self) -> Vec<u8> {
+        include_bytes!("../../res/test_contract.wasm").to_vec()
+    }
+
+    fn get_storage_deposit_amount(&self) -> workspaces::types::Balance {
+        100_000_000_0000
+    }
+
+    fn get_role_accounts(&self) -> HashMap<String, workspaces::AccountId> {
+        HashMap::new()
+    }
+
+    async fn initialize_contract_template(
+        &self,
+        contract: workspaces::Contract,
+        _roles: HashMap<String, (workspaces::AccountId, workspaces::Account)>,
+    ) -> Result<
+        Box<
+            dyn test_context::contract_controller::ContractController<
+                ContractTemplate = TestContractTest,
+            >,
+        >,
+        TestError,
+    > {
+        let contract_id = contract.as_account().clone();
+        let contract_template = TestContractTest {
+            contract,
+            measure_storage_usage: true,
+        };
+
+        contract_template.new(10, &contract_id, 1u128).await?;
+
+        Ok(Box::new(ContractHolder {
+            contract: contract_template,
+        }))
+    }
+}
+
+struct ContractHolder {
+    contract: TestContractTest,
+}
+
+impl ContractController for ContractHolder {
+    type ContractTemplate = TestContractTest;
+
+    fn get_template(&self) -> &Self::ContractTemplate {
+        &self.contract
+    }
+
+    fn get_contract(&self) -> &workspaces::Contract {
+        &self.contract.contract
+    }
+}
+
+#[tokio::test]
+async fn test_initializer_usage() -> anyhow::Result<()> {
+    let (_, contract_controller, _, _) =
+        initialize_context::<TestContractTest>(vec![], HashMap::new(), &Initializer {}).await?;
+
+    let contract_template = contract_controller.get_template();
+
+    let res = contract_template.view_no_param_ret_u64().await?;
+    assert_eq!(res.value, 10);
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_ft_transfer_usage() -> anyhow::Result<()> {
+    let (_, contract_controller, token_info, _) = initialize_context::<TestContractTest>(
+        vec![TokenInitialInfo {
+            token_info: eth(),
+            wasm_file: include_bytes!("../../res/test_token.wasm").to_vec(),
+        }],
+        HashMap::new(),
+        &Initializer {},
+    )
+    .await?;
+
+    let (token_template, _) = token_info.get(&eth().account_id).unwrap();
+
+    token_template
+        .storage_deposit(
+            None,
+            None,
+            contract_controller.get_contract().as_account(),
+            parse_near!("1N"),
+        )
+        .await?;
+
+    token_template
+        .storage_deposit(
+            None,
+            None,
+            token_template.contract.as_account(),
+            parse_near!("1N"),
+        )
+        .await?;
+
+    token_template
+        .mint(
+            token_template.contract.id().clone(),
+            10.into(),
+            token_template.contract.as_account(),
+            1u128,
+        )
+        .await?;
+
+    token_template
+        .custom_ft_transfer(
+            contract_controller.get_contract().id().clone(),
+            10.into(),
+            None,
+            token_template.contract.as_account(),
+            1u128,
+        )
+        .await?;
+
+    assert_eq!(
+        token_template
+            .custom_ft_balance_of(contract_controller.get_contract().id().clone())
+            .await?
+            .value
+            .0,
+        10
+    );
 
     Ok(())
 }
