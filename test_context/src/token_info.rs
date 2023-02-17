@@ -10,11 +10,6 @@ pub struct TokenInfo {
     pub ticker: String,
     pub decimals: u8,
     pub storage_deposit_amount: Balance,
-}
-
-#[derive(Debug)]
-pub struct TokenInitialInfo {
-    pub token_info: TokenInfo,
     pub wasm_file: Vec<u8>,
 }
 
@@ -53,12 +48,16 @@ impl AsRef<str> for TokenInfo {
     }
 }
 
+static DEFAULT_FT_WASM: Lazy<Vec<u8>> =
+    Lazy::new(|| include_bytes!("../../res/test_token.wasm").to_vec());
+
 static WNEAR: Lazy<TokenInfo> = Lazy::new(|| TokenInfo {
     account_id: "wnear.test.near".parse().unwrap(),
     name: "wrapped Near".to_owned(),
     ticker: "wNEAR".to_owned(),
     decimals: 24,
     storage_deposit_amount: 100_000_000_000_000_000_000_000,
+    wasm_file: DEFAULT_FT_WASM.clone(),
 });
 
 pub fn wnear() -> TokenInfo {
@@ -71,6 +70,7 @@ static USDC: Lazy<TokenInfo> = Lazy::new(|| TokenInfo {
     ticker: "USDC".to_owned(),
     decimals: 6,
     storage_deposit_amount: 100_000_000_000_000_000_000_000,
+    wasm_file: DEFAULT_FT_WASM.clone(),
 });
 
 pub fn usdc() -> TokenInfo {
@@ -83,6 +83,7 @@ static ETHER: Lazy<TokenInfo> = Lazy::new(|| TokenInfo {
     ticker: "ETH".to_owned(),
     decimals: 18,
     storage_deposit_amount: 100_000_000_000_000_000_000_000,
+    wasm_file: DEFAULT_FT_WASM.clone(),
 });
 
 pub fn eth() -> TokenInfo {

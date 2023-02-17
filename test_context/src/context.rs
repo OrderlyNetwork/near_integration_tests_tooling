@@ -2,7 +2,7 @@ use crate::{
     common::TestAccount,
     contract_controller::{ContractController, ContractInitializer},
     print_log,
-    token_info::{TokenInfo, TokenInitialInfo},
+    token_info::TokenInfo,
 };
 use anyhow::Ok;
 use futures::{
@@ -31,7 +31,7 @@ pub struct TestContext<T> {
 
 impl<T> TestContext<T> {
     pub async fn new(
-        token_info: Vec<TokenInitialInfo>,
+        token_info: Vec<TokenInfo>,
         test_accounts: HashMap<AccountId, TestAccount>,
         contract_initializer: &impl ContractInitializer<T>,
         statistics: Vec<Box<dyn StatisticConsumer>>,
@@ -53,7 +53,7 @@ const JOIN_MAX: usize = 500;
 const JOIN_CHUNK: usize = 100;
 
 pub async fn initialize_context<T>(
-    token_infos: Vec<TokenInitialInfo>,
+    token_infos: Vec<TokenInfo>,
     test_accounts: HashMap<AccountId, TestAccount>,
     contract_initializer: &impl ContractInitializer<T>,
 ) -> anyhow::Result<(
@@ -64,16 +64,6 @@ pub async fn initialize_context<T>(
 )> {
     let worker = workspaces::sandbox().await?;
     let contract_wasm = contract_initializer.get_wasm();
-
-    let (token_infos, wasm_files): (Vec<_>, Vec<_>) = token_infos
-        .into_iter()
-        .map(
-            |TokenInitialInfo {
-                 token_info,
-                 wasm_file,
-             }| (token_info, wasm_file),
-        )
-        .unzip();
 
     let (contract, contract_accounts, token_contracts, accounts) = try_join!(
         worker.create_tla_and_deploy(
@@ -88,20 +78,13 @@ pub async fn initialize_context<T>(
                     .map(|result| result.map(|account| (role, (account_id, account))))
             }
         )),
-        try_join_all(
-            token_infos
-                .into_iter()
-                .enumerate()
-                .map(|(index, token_info)| {
-                    worker
-                        .create_tla_and_deploy(
-                            token_info.account_id.clone(),
-                            SecretKey::from_random(KeyType::ED25519),
-                            &wasm_files[index],
-                        )
-                        .map(|result| result.map(|exec| (exec, token_info)))
-                })
-        ),
+        try_join_all(token_infos.iter().map(|token_info| {
+            worker.create_tla_and_deploy(
+                token_info.account_id.clone(),
+                SecretKey::from_random(KeyType::ED25519),
+                &token_info.wasm_file,
+            )
+        })),
         try_join_all(test_accounts.iter().take(JOIN_MAX).map(|(account_id, _)| {
             worker.create_tla(account_id.clone(), SecretKey::from_random(KeyType::ED25519))
         }))
@@ -121,6 +104,7 @@ pub async fn initialize_context<T>(
 
     let token_contracts_and_infos = token_contracts
         .into_iter()
+        .zip(token_infos.into_iter())
         .map(|(token_contract, token_info)| token_contract.into_result().map(|el| (el, token_info)))
         .collect::<Result<Vec<(Contract, TokenInfo)>, _>>()?
         .into_iter()

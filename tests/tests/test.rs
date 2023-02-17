@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use test_context::{
     context::initialize_context,
     contract_controller::{ContractController, ContractInitializer},
-    token_info::{eth, TokenInitialInfo},
+    token_info::eth,
 };
 use test_contract::TestContractTest;
 use workspaces::AccountId;
@@ -247,15 +247,9 @@ async fn test_initializer_usage() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_ft_transfer_usage() -> anyhow::Result<()> {
-    let (_, contract_controller, token_info, _) = initialize_context::<TestContractTest>(
-        vec![TokenInitialInfo {
-            token_info: eth(),
-            wasm_file: include_bytes!("../../res/test_token.wasm").to_vec(),
-        }],
-        HashMap::new(),
-        &Initializer {},
-    )
-    .await?;
+    let (_, contract_controller, token_info, _) =
+        initialize_context::<TestContractTest>(vec![eth()], HashMap::new(), &Initializer {})
+            .await?;
 
     let (token_template, _) = token_info.get(&eth().account_id).unwrap();
 
