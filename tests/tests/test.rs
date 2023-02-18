@@ -236,8 +236,7 @@ impl ContractController for ContractHolder {
 
 #[tokio::test]
 async fn test_initializer_usage() -> anyhow::Result<()> {
-    let (_, contract_controller, _, _) =
-        initialize_context::<TestContractTest>(&[], &[], &Initializer {}).await?;
+    let (_, contract_controller, _, _) = initialize_context(&[], &[], &Initializer {}).await?;
 
     let contract_template = contract_controller.get_template();
 
@@ -249,7 +248,7 @@ async fn test_initializer_usage() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_ft_transfer_usage() -> anyhow::Result<()> {
-    let (_, contract_controller, tokens, accounts) = initialize_context::<TestContractTest>(
+    let (_, contract_controller, [eth], accounts) = initialize_context(
         &[eth()],
         &[(
             maker_id(),
@@ -262,8 +261,6 @@ async fn test_ft_transfer_usage() -> anyhow::Result<()> {
         &Initializer {},
     )
     .await?;
-
-    let eth = tokens.token(&eth()).unwrap();
 
     eth.storage_deposit(
         None,

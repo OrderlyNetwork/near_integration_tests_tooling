@@ -1,11 +1,7 @@
 use anyhow::anyhow;
 use once_cell::sync::Lazy;
-use std::{
-    collections::HashMap,
-    fmt::{self, Display, Formatter},
-};
-use test_token::TokenContractTest;
-use workspaces::{types::Balance, Account, AccountId, Contract};
+use std::fmt::{self, Display, Formatter};
+use workspaces::{types::Balance, AccountId};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct TokenInfo {
@@ -92,22 +88,4 @@ static ETHER: Lazy<TokenInfo> = Lazy::new(|| TokenInfo {
 
 pub fn eth() -> TokenInfo {
     ETHER.clone()
-}
-
-pub struct TokenContracts {
-    pub tokens: HashMap<TokenInfo, TokenContractTest>,
-}
-
-impl TokenContracts {
-    pub fn token(&self, token: &TokenInfo) -> Option<&TokenContractTest> {
-        self.tokens.get(token)
-    }
-
-    pub fn contract(&self, token: &TokenInfo) -> Option<&Contract> {
-        self.tokens.get(token).map(|c| &c.contract)
-    }
-
-    pub fn account(&self, token: &TokenInfo) -> Option<&Account> {
-        self.tokens.get(token).map(|c| c.contract.as_account())
-    }
 }

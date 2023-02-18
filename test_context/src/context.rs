@@ -2,7 +2,7 @@ use crate::{
     common::TestAccount,
     contract_controller::{ContractController, ContractInitializer},
     print_log,
-    token_info::{TokenContracts, TokenInfo},
+    token_info::TokenInfo,
 };
 use anyhow::Ok;
 use futures::{
@@ -21,18 +21,18 @@ use workspaces::{
     Account, AccountId, Contract, Worker,
 };
 
-pub struct TestContext<T> {
+pub struct TestContext<T, const N: usize> {
     pub worker: Worker<Sandbox>,
     pub contract_controller: Box<dyn ContractController<ContractTemplate = T>>,
-    pub token_contracts: TokenContracts,
+    pub token_contracts: [TokenContractTest; N],
     pub accounts: HashMap<AccountId, Account>,
     pub statistics: Arc<Mutex<Vec<Box<dyn StatisticConsumer>>>>,
 }
 
-impl<T> TestContext<T> {
+impl<T, const N: usize> TestContext<T, N> {
     pub async fn new(
-        token_info: &[TokenInfo],
-        test_accounts: &[(AccountId, TestAccount)],
+        token_info: &[TokenInfo; N],
+        test_accounts: &[(AccountId, TestAccount); N],
         contract_initializer: &impl ContractInitializer<T>,
         statistics: Vec<Box<dyn StatisticConsumer>>,
     ) -> anyhow::Result<Self> {
@@ -52,14 +52,14 @@ impl<T> TestContext<T> {
 const JOIN_MAX: usize = 500;
 const JOIN_CHUNK: usize = 100;
 
-pub async fn initialize_context<T>(
+pub async fn initialize_context<T, const N: usize>(
     token_infos: &[TokenInfo],
-    test_accounts: &[(AccountId, TestAccount)],
+    test_accounts: &[(AccountId, TestAccount); N],
     contract_initializer: &impl ContractInitializer<T>,
 ) -> anyhow::Result<(
     Worker<Sandbox>,
     Box<dyn ContractController<ContractTemplate = T>>,
-    TokenContracts,
+    [TokenContractTest; N],
     HashMap<AccountId, Account>,
 )> {
     let worker = workspaces::sandbox().await?;
@@ -122,7 +122,7 @@ pub async fn initialize_context<T>(
                 },
             )
         })
-        .collect::<HashMap<_, _>>();
+        .collect::<Vec<(_, _)>>();
 
     initialize_tokens(token_contracts_and_infos.iter()).await?;
 
@@ -164,9 +164,12 @@ pub async fn initialize_context<T>(
     Ok((
         worker,
         contract_controller,
-        TokenContracts {
-            tokens: token_contracts_and_infos,
-        },
+        token_contracts_and_infos
+            .into_iter()
+            .map(|(_, token_contract)| token_contract)
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap(),
         accounts,
     ))
 }
@@ -207,7 +210,7 @@ async fn create_rest_of_accounts(
 }
 
 async fn initialize_tokens(
-    token_contract_and_infos: impl Iterator<Item = (&TokenInfo, &TokenContractTest)>,
+    token_contract_and_infos: impl Iterator<Item = &(TokenInfo, TokenContractTest)>,
 ) -> anyhow::Result<Vec<integration_tests_toolset::tx_result::TxResult<()>>> {
     try_join_all(token_contract_and_infos.map(
         |(
@@ -275,7 +278,7 @@ async fn mint_tokens(
 }
 
 async fn make_storage_deposits_and_mint_tokens(
-    token_contracts_and_infos: &HashMap<TokenInfo, TokenContractTest>,
+    token_contracts_and_infos: &Vec<(TokenInfo, TokenContractTest)>,
     contract_id: &AccountId,
     accounts: &HashMap<AccountId, Account>,
     test_accounts: &[(AccountId, TestAccount)],
