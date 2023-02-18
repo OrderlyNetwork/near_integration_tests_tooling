@@ -18,14 +18,17 @@ impl GasUsage {
     }
 }
 
+impl Default for GasUsage {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 // TODO: implement async guard for HashMap
 impl StatisticConsumer for GasUsage {
     fn consume_statistic(&mut self, stat: Statistic) {
-        match stat.details {
-            TxResultDetails::Call(call_data) => {
-                self.func_gas.insert(stat.func_name, call_data.gas);
-            }
-            _ => {}
+        if let TxResultDetails::Call(call_data) = stat.details {
+            self.func_gas.insert(stat.func_name, call_data.gas);
         }
     }
 

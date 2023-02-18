@@ -130,12 +130,7 @@ impl StorageManagement for TokenContract {
 
     #[payable]
     fn storage_unregister(&mut self, force: Option<bool>) -> bool {
-        #[allow(unused_variables)]
-        if let Some((account_id, balance)) = self.token.internal_storage_unregister(force) {
-            true
-        } else {
-            false
-        }
+        self.token.internal_storage_unregister(force).is_some()
     }
 
     fn storage_balance_bounds(&self) -> StorageBalanceBounds {

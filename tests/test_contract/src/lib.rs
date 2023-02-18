@@ -5,15 +5,9 @@ use near_sdk::{assert_one_yocto, env, json_types::U128, near_bindgen, AccountId,
 
 #[integration_tests_bindgen]
 #[near_bindgen]
-#[derive(BorshDeserialize, BorshSerialize)]
+#[derive(Default, BorshDeserialize, BorshSerialize)]
 pub struct TestContract {
     state: u64,
-}
-
-impl Default for TestContract {
-    fn default() -> Self {
-        Self { state: 0 }
-    }
 }
 
 #[integration_tests_bindgen]

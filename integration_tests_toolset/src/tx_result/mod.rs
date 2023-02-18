@@ -39,7 +39,7 @@ where
     T: Clone,
 {
     pub fn populate_statistic(self, consumers: &mut [&mut impl StatisticConsumer]) -> Self {
-        consumers.into_iter().for_each(|con| {
+        consumers.iter_mut().for_each(|con| {
             con.consume_statistic(self.clone().into());
         });
         self

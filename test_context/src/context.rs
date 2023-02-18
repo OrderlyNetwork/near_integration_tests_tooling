@@ -67,7 +67,7 @@ pub async fn initialize_context<T>(
 
     let (contract, contract_accounts, token_contracts, accounts) = try_join!(
         worker.create_tla_and_deploy(
-            contract_initializer.get_id().clone(),
+            contract_initializer.get_id(),
             SecretKey::from_random(KeyType::ED25519),
             &contract_wasm
         ),
@@ -141,7 +141,7 @@ pub async fn initialize_context<T>(
 
     make_storage_deposits_and_mint_tokens(
         &token_contracts_and_infos,
-        &contract_controller.get_contract().as_account().id(),
+        contract_controller.get_contract().as_account().id(),
         &accounts,
         test_accounts,
     )

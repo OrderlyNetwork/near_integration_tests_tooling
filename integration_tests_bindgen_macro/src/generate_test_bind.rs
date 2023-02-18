@@ -13,8 +13,7 @@ pub(crate) fn generate_struct(input: TokenStream, struct_info: StructInfo) -> To
             pub contract: workspaces::Contract,
             pub measure_storage_usage: bool,
         }
-    }
-    .into();
+    };
 
     generated_struct.extend(input.into_iter());
     generated_struct
@@ -57,16 +56,15 @@ fn json_serialize(func_info: &FunctionInfo) -> TokenStream {
             let ident = value;
             let ident_str = ident.to_string();
             Some(match acc {
-                None => quote! { #ident_str: #ident }.into(),
-                Some(a) => quote! { #a, #ident_str: #ident }.into(),
+                None => quote! { #ident_str: #ident },
+                Some(a) => quote! { #a, #ident_str: #ident },
             })
         })
-        .unwrap_or_else(|| TokenStream::default()); // handle the case when their is no args
+        .unwrap_or_default(); // handle the case when their is no args
 
     quote! {
       let args = near_sdk::serde_json::json!({#args}).to_string().into_bytes();
     }
-    .into()
 }
 
 pub(crate) fn generate_view_function(func_info: &FunctionInfo) -> TokenStream {
@@ -109,7 +107,7 @@ pub(crate) fn generate_function(
     additional_params: TokenStream,
     use_tx_trait: TokenStream,
 ) -> TokenStream {
-    let serialize_args = json_serialize(&func_info);
+    let serialize_args = json_serialize(func_info);
     let name = func_info.function_name.clone();
     let name_str = func_info.function_name.to_string();
     let mut params = func_info.params.clone();

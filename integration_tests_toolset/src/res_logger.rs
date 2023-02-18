@@ -33,8 +33,7 @@ impl ResLogger<ExecutionFinalResult> for ExecutionFinalResult {
             // TODO: raise exception if internal receipt failures
             print_log!("{:#?}", failure.bright_red());
         }
-        Ok({
-            self.clone().into_result()?;
-        })
+        self.clone().into_result()?;
+        Ok(())
     }
 }
