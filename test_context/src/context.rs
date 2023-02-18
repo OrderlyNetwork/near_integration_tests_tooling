@@ -31,7 +31,7 @@ pub struct TestContext<T> {
 
 impl<T> TestContext<T> {
     pub async fn new(
-        token_info: Vec<TokenInfo>,
+        token_info: &[TokenInfo],
         test_accounts: HashMap<AccountId, TestAccount>,
         contract_initializer: &impl ContractInitializer<T>,
         statistics: Vec<Box<dyn StatisticConsumer>>,
@@ -53,7 +53,7 @@ const JOIN_MAX: usize = 500;
 const JOIN_CHUNK: usize = 100;
 
 pub async fn initialize_context<T>(
-    token_infos: Vec<TokenInfo>,
+    token_infos: &[TokenInfo],
     test_accounts: HashMap<AccountId, TestAccount>,
     contract_initializer: &impl ContractInitializer<T>,
 ) -> anyhow::Result<(
@@ -104,8 +104,12 @@ pub async fn initialize_context<T>(
 
     let token_contracts_and_infos = token_contracts
         .into_iter()
-        .zip(token_infos.into_iter())
-        .map(|(token_contract, token_info)| token_contract.into_result().map(|el| (el, token_info)))
+        .zip(token_infos.iter())
+        .map(|(token_contract, token_info)| {
+            token_contract
+                .into_result()
+                .map(|el| (el, token_info.clone()))
+        })
         .collect::<Result<Vec<(Contract, TokenInfo)>, _>>()?
         .into_iter()
         .map(|(token_contract, token_info)| {
