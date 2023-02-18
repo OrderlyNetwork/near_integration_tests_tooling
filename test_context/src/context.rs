@@ -32,7 +32,7 @@ pub struct TestContext<T> {
 impl<T> TestContext<T> {
     pub async fn new(
         token_info: &[TokenInfo],
-        test_accounts: HashMap<AccountId, TestAccount>,
+        test_accounts: &[(AccountId, TestAccount)],
         contract_initializer: &impl ContractInitializer<T>,
         statistics: Vec<Box<dyn StatisticConsumer>>,
     ) -> anyhow::Result<Self> {
@@ -54,7 +54,7 @@ const JOIN_CHUNK: usize = 100;
 
 pub async fn initialize_context<T>(
     token_infos: &[TokenInfo],
-    test_accounts: HashMap<AccountId, TestAccount>,
+    test_accounts: &[(AccountId, TestAccount)],
     contract_initializer: &impl ContractInitializer<T>,
 ) -> anyhow::Result<(
     Worker<Sandbox>,
@@ -137,13 +137,13 @@ pub async fn initialize_context<T>(
         })
         .collect::<HashMap<_, _>>();
 
-    accounts.extend(create_rest_of_accounts(&worker, test_accounts.clone()).await?);
+    accounts.extend(create_rest_of_accounts(&worker, test_accounts).await?);
 
     make_storage_deposits_and_mint_tokens(
         &token_contracts_and_infos,
         &contract_controller.get_contract().as_account().id(),
         &accounts,
-        &test_accounts,
+        test_accounts,
     )
     .await?;
 
@@ -173,7 +173,7 @@ pub async fn initialize_context<T>(
 
 async fn create_rest_of_accounts(
     worker: &Worker<Sandbox>,
-    test_accounts: HashMap<AccountId, TestAccount>,
+    test_accounts: &[(AccountId, TestAccount)],
 ) -> anyhow::Result<HashMap<AccountId, Account>> {
     let mut accounts = HashMap::new();
 
@@ -278,7 +278,7 @@ async fn make_storage_deposits_and_mint_tokens(
     token_contracts_and_infos: &HashMap<TokenInfo, TokenContractTest>,
     contract_id: &AccountId,
     accounts: &HashMap<AccountId, Account>,
-    test_accounts: &HashMap<AccountId, TestAccount>,
+    test_accounts: &[(AccountId, TestAccount)],
 ) -> anyhow::Result<()> {
     let futures = FuturesUnordered::new();
     for (token_info, token_contract) in token_contracts_and_infos.iter() {
