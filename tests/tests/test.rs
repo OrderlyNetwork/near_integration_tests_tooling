@@ -247,52 +247,42 @@ async fn test_initializer_usage() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_ft_transfer_usage() -> anyhow::Result<()> {
-    let (_, contract_controller, token_info, _) =
+    let (_, contract_controller, tokens, _) =
         initialize_context::<TestContractTest>(vec![eth()], HashMap::new(), &Initializer {})
             .await?;
 
-    let (token_template, _) = token_info.get(&eth().account_id).unwrap();
+    let eth = tokens.token(&eth()).unwrap();
 
-    token_template
-        .storage_deposit(
-            None,
-            None,
-            contract_controller.get_contract().as_account(),
-            parse_near!("1N"),
-        )
+    eth.storage_deposit(
+        None,
+        None,
+        contract_controller.get_contract().as_account(),
+        parse_near!("1N"),
+    )
+    .await?;
+
+    eth.storage_deposit(None, None, eth.contract.as_account(), parse_near!("1N"))
         .await?;
 
-    token_template
-        .storage_deposit(
-            None,
-            None,
-            token_template.contract.as_account(),
-            parse_near!("1N"),
-        )
-        .await?;
+    eth.mint(
+        eth.contract.id().clone(),
+        10.into(),
+        eth.contract.as_account(),
+        1u128,
+    )
+    .await?;
 
-    token_template
-        .mint(
-            token_template.contract.id().clone(),
-            10.into(),
-            token_template.contract.as_account(),
-            1u128,
-        )
-        .await?;
-
-    token_template
-        .custom_ft_transfer(
-            contract_controller.get_contract().id().clone(),
-            10.into(),
-            None,
-            token_template.contract.as_account(),
-            1u128,
-        )
-        .await?;
+    eth.custom_ft_transfer(
+        contract_controller.get_contract().id().clone(),
+        10.into(),
+        None,
+        eth.contract.as_account(),
+        1u128,
+    )
+    .await?;
 
     assert_eq!(
-        token_template
-            .custom_ft_balance_of(contract_controller.get_contract().id().clone())
+        eth.custom_ft_balance_of(contract_controller.get_contract().id().clone())
             .await?
             .value
             .0,

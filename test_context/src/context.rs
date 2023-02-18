@@ -2,7 +2,7 @@ use crate::{
     common::TestAccount,
     contract_controller::{ContractController, ContractInitializer},
     print_log,
-    token_info::TokenInfo,
+    token_info::{TokenContracts, TokenInfo},
 };
 use anyhow::Ok;
 use futures::{
@@ -24,7 +24,7 @@ use workspaces::{
 pub struct TestContext<T> {
     pub worker: Worker<Sandbox>,
     pub contract_controller: Box<dyn ContractController<ContractTemplate = T>>,
-    pub token_contracts_and_info: HashMap<AccountId, (TokenContractTest, TokenInfo)>,
+    pub token_contracts: TokenContracts,
     pub accounts: HashMap<AccountId, Account>,
     pub statistics: Arc<Mutex<Vec<Box<dyn StatisticConsumer>>>>,
 }
@@ -36,13 +36,13 @@ impl<T> TestContext<T> {
         contract_initializer: &impl ContractInitializer<T>,
         statistics: Vec<Box<dyn StatisticConsumer>>,
     ) -> anyhow::Result<Self> {
-        let (worker, contract_controller, token_contracts_and_info, accounts) =
+        let (worker, contract_controller, token_contracts, accounts) =
             initialize_context(token_info, test_accounts, contract_initializer).await?;
 
         Ok(Self {
             worker,
             contract_controller,
-            token_contracts_and_info,
+            token_contracts,
             accounts,
             statistics: Arc::new(Mutex::new(statistics)),
         })
@@ -59,7 +59,7 @@ pub async fn initialize_context<T>(
 ) -> anyhow::Result<(
     Worker<Sandbox>,
     Box<dyn ContractController<ContractTemplate = T>>,
-    HashMap<AccountId, (TokenContractTest, TokenInfo)>,
+    TokenContracts,
     HashMap<AccountId, Account>,
 )> {
     let worker = workspaces::sandbox().await?;
@@ -111,19 +111,16 @@ pub async fn initialize_context<T>(
         .map(|(token_contract, token_info)| {
             print_log!("Created token {}", token_contract.as_account().id().blue());
             (
-                token_contract.as_account().id().clone(),
-                (
-                    TokenContractTest {
-                        contract: token_contract,
-                        measure_storage_usage: false,
-                    },
-                    token_info,
-                ),
+                token_info,
+                TokenContractTest {
+                    contract: token_contract,
+                    measure_storage_usage: false,
+                },
             )
         })
         .collect::<HashMap<_, _>>();
 
-    initialize_tokens(token_contracts_and_infos.values()).await?;
+    initialize_tokens(token_contracts_and_infos.iter()).await?;
 
     let mut accounts = accounts
         .into_iter()
@@ -163,7 +160,9 @@ pub async fn initialize_context<T>(
     Ok((
         worker,
         contract_controller,
-        token_contracts_and_infos,
+        TokenContracts {
+            tokens: token_contracts_and_infos,
+        },
         accounts,
     ))
 }
@@ -204,17 +203,17 @@ async fn create_rest_of_accounts(
 }
 
 async fn initialize_tokens(
-    token_contract_and_infos: impl Iterator<Item = &(TokenContractTest, TokenInfo)>,
+    token_contract_and_infos: impl Iterator<Item = (&TokenInfo, &TokenContractTest)>,
 ) -> anyhow::Result<Vec<integration_tests_toolset::tx_result::TxResult<()>>> {
     try_join_all(token_contract_and_infos.map(
         |(
-            test_token_contract,
             TokenInfo {
                 name,
                 ticker,
                 decimals,
                 ..
             },
+            test_token_contract,
         )| {
             test_token_contract.new(
                 name.to_string(),
@@ -272,17 +271,17 @@ async fn mint_tokens(
 }
 
 async fn make_storage_deposits_and_mint_tokens(
-    token_contracts_and_infos: &HashMap<AccountId, (TokenContractTest, TokenInfo)>,
+    token_contracts_and_infos: &HashMap<TokenInfo, TokenContractTest>,
     contract_id: &AccountId,
     accounts: &HashMap<AccountId, Account>,
     test_accounts: &HashMap<AccountId, TestAccount>,
 ) -> anyhow::Result<()> {
     let futures = FuturesUnordered::new();
-    for (token_account_id, (token_contract, token_info)) in token_contracts_and_infos.iter() {
+    for (token_info, token_contract) in token_contracts_and_infos.iter() {
         for ((account_id, account), (_, TestAccount { mint_amount })) in
             accounts.iter().zip(test_accounts.iter())
         {
-            if let Some(amount) = mint_amount.get(&token_account_id.to_string()) {
+            if let Some(amount) = mint_amount.get(&token_info.account_id.to_string()) {
                 futures.push(
                     make_storage_deposit(
                         token_contract,
