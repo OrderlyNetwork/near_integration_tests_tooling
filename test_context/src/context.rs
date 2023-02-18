@@ -75,7 +75,7 @@ pub async fn initialize_context<T, const N: usize>(
             |(role, account_id)| {
                 worker
                     .create_tla(account_id.clone(), SecretKey::from_random(KeyType::ED25519))
-                    .map(|result| result.map(|account| (role, (account_id, account))))
+                    .map(|result| result.map(|account| (role, account)))
             }
         )),
         try_join_all(token_infos.iter().map(|token_info| {
@@ -93,10 +93,8 @@ pub async fn initialize_context<T, const N: usize>(
     let contract = contract.into_result()?;
     let contract_accounts = contract_accounts
         .into_iter()
-        .map(|(role, (account_id, account))| {
-            account.into_result().map(|el| (role, (account_id, el)))
-        })
-        .collect::<Result<Vec<(String, (AccountId, Account))>, _>>()?;
+        .map(|(role, account)| account.into_result().map(|el| (role, el)))
+        .collect::<Result<Vec<(String, Account)>, _>>()?;
 
     let contract_controller = contract_initializer
         .initialize_contract_template(contract, HashMap::from_iter(contract_accounts.into_iter()))

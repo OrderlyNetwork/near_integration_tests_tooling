@@ -195,7 +195,7 @@ impl ContractInitializer<TestContractTest> for Initializer {
     async fn initialize_contract_template(
         &self,
         contract: workspaces::Contract,
-        _roles: HashMap<String, (workspaces::AccountId, workspaces::Account)>,
+        _roles: HashMap<String, workspaces::Account>,
     ) -> Result<
         Box<
             dyn test_context::contract_controller::ContractController<

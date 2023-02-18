@@ -19,6 +19,6 @@ pub trait ContractInitializer<ContractTemplate> {
     async fn initialize_contract_template(
         &self,
         contract: Contract,
-        roles: HashMap<String, (AccountId, Account)>,
+        roles: HashMap<String, Account>,
     ) -> Result<Box<dyn ContractController<ContractTemplate = ContractTemplate>>, TestError>;
 }
