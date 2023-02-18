@@ -1,7 +1,8 @@
 use integration_tests_bindgen_macro::integration_tests_bindgen;
+use near_contract_standards::fungible_token::receiver::FungibleTokenReceiver;
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
 use near_sdk::serde::{Deserialize, Serialize};
-use near_sdk::{assert_one_yocto, env, near_bindgen, AccountId};
+use near_sdk::{assert_one_yocto, env, json_types::U128, near_bindgen, AccountId, PromiseOrValue};
 
 #[derive(Serialize, Deserialize)]
 #[serde(crate = "near_sdk::serde")]
@@ -133,6 +134,19 @@ impl TestContract {
         assert_one_yocto();
 
         self.state += 1
+    }
+}
+
+#[near_bindgen]
+#[allow(unused_variables)]
+impl FungibleTokenReceiver for TestContract {
+    fn ft_on_transfer(
+        &mut self,
+        sender_id: AccountId,
+        amount: U128,
+        msg: String,
+    ) -> PromiseOrValue<U128> {
+        PromiseOrValue::Value(0.into())
     }
 }
 

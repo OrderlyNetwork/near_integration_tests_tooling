@@ -1,8 +1,10 @@
 use async_trait::async_trait;
 use integration_tests_toolset::{error::TestError, statistic::gas_usage_aggregator::GasUsage};
+use maplit::hashmap;
 use near_units::parse_near;
 use std::collections::HashMap;
 use test_context::{
+    common::{maker_id, TestAccount},
     context::initialize_context,
     contract_controller::{ContractController, ContractInitializer},
     token_info::eth,
@@ -247,9 +249,18 @@ async fn test_initializer_usage() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_ft_transfer_usage() -> anyhow::Result<()> {
-    let (_, contract_controller, tokens, _) =
-        initialize_context::<TestContractTest>(vec![eth()], HashMap::new(), &Initializer {})
-            .await?;
+    let (_, contract_controller, tokens, accounts) = initialize_context::<TestContractTest>(
+        vec![eth()],
+        hashmap! {
+            maker_id() => TestAccount {
+                mint_amount: hashmap! {
+                    eth().to_string() => eth().parse("15")?
+                }
+            },
+        },
+        &Initializer {},
+    )
+    .await?;
 
     let eth = tokens.token(&eth()).unwrap();
 
@@ -287,6 +298,26 @@ async fn test_ft_transfer_usage() -> anyhow::Result<()> {
             .value
             .0,
         10
+    );
+
+    let maker = accounts.get(&maker_id()).unwrap();
+
+    eth.custom_ft_transfer_call(
+        contract_controller.get_contract().id().clone(),
+        10.into(),
+        None,
+        "Get my money!".to_owned(),
+        maker,
+        1u128,
+    )
+    .await?;
+
+    assert_eq!(
+        eth.custom_ft_balance_of(contract_controller.get_contract().id().clone())
+            .await?
+            .value
+            .0,
+        20
     );
 
     Ok(())

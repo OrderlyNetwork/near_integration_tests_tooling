@@ -28,7 +28,7 @@ pub struct TokenContract {
 
 impl fmt::Debug for TokenContract {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Contract")
+        f.debug_struct("TokenContract")
             .field("name", &self.name)
             .field("symbol", &self.symbol)
             .field("decimals", &self.decimals)
@@ -52,8 +52,23 @@ impl TokenContract {
         self.token.ft_transfer(receiver_id, amount, memo)
     }
 
+    #[payable]
+    pub fn custom_ft_transfer_call(
+        &mut self,
+        receiver_id: AccountId,
+        amount: U128,
+        memo: Option<String>,
+        msg: String,
+    ) {
+        self.token.ft_transfer_call(receiver_id, amount, memo, msg);
+    }
+
     pub fn custom_ft_balance_of(&self, account_id: AccountId) -> U128 {
         self.token.ft_balance_of(account_id)
+    }
+
+    pub fn custom_ft_total_supply(&self) -> U128 {
+        self.token.ft_total_supply()
     }
 }
 
