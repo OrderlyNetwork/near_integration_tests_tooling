@@ -1,14 +1,7 @@
 use integration_tests_bindgen_macro::integration_tests_bindgen;
 use near_contract_standards::fungible_token::receiver::FungibleTokenReceiver;
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
-use near_sdk::serde::{Deserialize, Serialize};
 use near_sdk::{assert_one_yocto, env, json_types::U128, near_bindgen, AccountId, PromiseOrValue};
-
-#[derive(Serialize, Deserialize)]
-#[serde(crate = "near_sdk::serde")]
-pub struct TestAccountIdWrapper {
-    pub account_id: AccountId,
-}
 
 #[integration_tests_bindgen]
 #[near_bindgen]
