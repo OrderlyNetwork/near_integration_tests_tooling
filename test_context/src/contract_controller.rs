@@ -6,7 +6,7 @@ use workspaces::{types::Balance, Account, AccountId, Contract};
 
 use crate::common::TestAccount;
 
-pub trait ContractController {
+pub trait ContractController: Send + Sync + 'static {
     type ContractTemplate;
     fn get_template(&self) -> &Self::ContractTemplate;
     fn get_contract(&self) -> &Contract;

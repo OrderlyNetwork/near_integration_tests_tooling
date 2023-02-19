@@ -10,7 +10,9 @@ pub struct Block<T, const N: usize> {
 
 // #[cfg(feature = "stress_test")]
 #[async_trait]
-pub trait Runnable<T, const N: usize>: Sync + Send + std::fmt::Debug + 'static {
+pub trait Runnable<T: Sync + Send + 'static, const N: usize>:
+    Sync + Send + std::fmt::Debug + 'static
+{
     #[allow(unused_variables)]
     async fn prepare(&self, context: &TestContext<T, N>) -> anyhow::Result<()> {
         Ok(())
@@ -41,7 +43,7 @@ pub trait Runnable<T, const N: usize>: Sync + Send + std::fmt::Debug + 'static {
 }
 
 // #[cfg(feature = "stress_test")]
-impl<T: 'static, const N: usize> Clone for Box<dyn Runnable<T, N>> {
+impl<T: Sync + Send + 'static, const N: usize> Clone for Box<dyn Runnable<T, N>> {
     fn clone(&self) -> Self {
         self.clone_dyn()
     }
