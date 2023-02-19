@@ -125,6 +125,10 @@ pub async fn initialize_context<T, const N: usize>(
             ),
         )
         .await?;
+    print_log!(
+        "Created contract {}",
+        contract_controller.get_contract().as_account().id().blue()
+    );
 
     let token_contracts_and_infos = token_contracts
         .into_iter()
