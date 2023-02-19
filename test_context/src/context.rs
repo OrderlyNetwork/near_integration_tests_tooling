@@ -2,6 +2,7 @@ use crate::{
     common::TestAccount,
     contract_controller::{ContractController, ContractInitializer},
     print_log,
+    test_token::TokenContractTest,
     token_info::TokenInfo,
 };
 use anyhow::Ok;
@@ -13,7 +14,6 @@ use near_sdk::{json_types::U128, Balance};
 use near_units::parse_near;
 use owo_colors::OwoColorize;
 use std::{collections::HashMap, sync::Arc};
-use test_token::TokenContractTest;
 use tokio::{sync::Mutex, task::JoinHandle};
 use workspaces::{
     network::Sandbox,

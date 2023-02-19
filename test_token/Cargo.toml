@@ -4,16 +4,10 @@ version = "0.1.0"
 edition = "2021"
 
 [lib]
-crate-type = ["cdylib", "rlib"]
-
+crate-type = ["cdylib"]
 
 [dependencies]
 integration_tests_bindgen_macro = {path = "../integration_tests_bindgen_macro"}
 integration_tests_toolset = {path = "../integration_tests_toolset"}
 near-sdk = { version = "4", default-features = false, features = ["unit-testing", "unstable"] }
 near-contract-standards = "4"
-
-[target.'cfg(not(all(target_arch = "wasm32", target_os = "unknown")))'.dependencies]
-workspaces = "0.7"
-anyhow = "1"
-async-trait = "0.1"

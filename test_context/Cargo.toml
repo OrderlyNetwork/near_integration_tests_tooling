@@ -10,7 +10,6 @@ near-sdk = { version = "4", default-features = false, features = ["unit-testing"
 near-contract-standards = "4"
 tokio = { version = "1", features = ["full"] }
 anyhow = "1"
-test_token = {path = "../test_token"}
 workspaces = "0.7.0"
 async-trait = "0.1.63"
 owo-colors = "3"
