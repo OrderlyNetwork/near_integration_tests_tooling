@@ -30,8 +30,8 @@ macro_rules! print_log {
 impl ResLogger<ExecutionFinalResult> for ExecutionFinalResult {
     fn check_res_log_failures(&self) -> Result<()> {
         for failure in self.receipt_failures() {
-            // TODO: raise exception if internal receipt failures
             print_log!("{:#?}", failure.bright_red());
+            failure.clone().into_result()?;
         }
         self.clone().into_result()?;
         Ok(())
