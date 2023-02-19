@@ -33,7 +33,7 @@ impl<T, const N: usize> TestContext<T, N> {
     pub async fn new(
         token_info: &[TokenInfo; N],
         test_accounts: &[TestAccount],
-        contract_initializer: &impl ContractInitializer<T>,
+        contract_initializer: &(impl ContractInitializer<T> + Sync + Send + 'static),
         statistics: Vec<Box<dyn StatisticConsumer>>,
     ) -> anyhow::Result<Self> {
         let (worker, contract_controller, token_contracts, accounts) =
@@ -55,7 +55,7 @@ const JOIN_CHUNK: usize = 100;
 pub async fn initialize_context<T, const N: usize>(
     token_infos: &[TokenInfo; N],
     test_accounts: &[TestAccount],
-    contract_initializer: &impl ContractInitializer<T>,
+    contract_initializer: &(impl ContractInitializer<T> + Sync + Send + 'static),
 ) -> anyhow::Result<(
     Worker<Sandbox>,
     Box<dyn ContractController<ContractTemplate = T>>,
