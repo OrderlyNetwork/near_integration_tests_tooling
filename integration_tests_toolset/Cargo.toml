@@ -6,9 +6,11 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [target.'cfg(not(all(target_arch = "wasm32", target_os = "unknown")))'.dependencies]
-workspaces = "0.7.0"
+anyhow = "1"
 async-trait = "0.1.63"
 owo-colors = "3"
 prettytable-rs = "0.10"
 serde = "1"
 thiserror = "1"
+tokio = { version = "1", features = ["full"] }
+workspaces = "0.7.0"

@@ -33,7 +33,6 @@ pub(crate) fn parse_func_info(ast: ItemImpl) -> ImplInfo {
             .clone(),
         _ => Ident::new("", Span::call_site()),
     };
-    let impl_name = format_ident!("{}Test", impl_ident);
     let mut func_infos: Vec<FunctionInfo> = vec![];
 
     for item in ast.items {
@@ -47,7 +46,8 @@ pub(crate) fn parse_func_info(ast: ItemImpl) -> ImplInfo {
     }
 
     ImplInfo {
-        impl_name,
+        struct_name: impl_ident.to_string(),
+        impl_name: format_ident!("{}Test", impl_ident),
         func_infos,
     }
 }

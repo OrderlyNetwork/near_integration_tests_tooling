@@ -15,6 +15,7 @@ pub(crate) enum Payable {
 
 #[derive(Debug)]
 pub(crate) struct ImplInfo {
+    pub struct_name: String,
     pub impl_name: Ident,
     pub func_infos: Vec<FunctionInfo>,
 }

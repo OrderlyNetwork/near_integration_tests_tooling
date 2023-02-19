@@ -7,4 +7,6 @@ pub mod res_logger;
 #[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
 pub mod statistic;
 #[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
+pub mod test_ops;
+#[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
 pub mod tx_result;
