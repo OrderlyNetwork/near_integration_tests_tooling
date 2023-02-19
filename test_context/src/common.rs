@@ -22,8 +22,11 @@ pub fn taker_id() -> AccountId {
     TAKER_ID.clone()
 }
 
-pub fn account_id(index: u32) -> AccountId {
-    format!("{}.test.near", index).parse().unwrap()
+pub fn account_id(prefix: &str, index: u32) -> AccountId {
+    match prefix {
+        "" => format!("{index}.test.near").parse().unwrap(),
+        prefix => format!("{prefix}_{index}.test.near").parse().unwrap(),
+    }
 }
 
 #[derive(Debug, Clone)]
