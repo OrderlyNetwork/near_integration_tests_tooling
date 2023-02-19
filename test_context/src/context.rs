@@ -121,7 +121,7 @@ pub async fn initialize_context<T, const N: usize>(
             HashMap::from_iter(
                 contract_accounts
                     .iter()
-                    .map(|(role, account, _)| (role.clone(), account)),
+                    .map(|(role, account, _)| (role.clone(), account.clone())),
             ),
         )
         .await?;

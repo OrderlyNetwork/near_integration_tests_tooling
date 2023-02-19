@@ -199,7 +199,7 @@ impl ContractInitializer<TestContractTest> for Initializer {
     async fn initialize_contract_template(
         &self,
         contract: workspaces::Contract,
-        roles: HashMap<String, &workspaces::Account>,
+        roles: HashMap<String, workspaces::Account>,
     ) -> Result<
         Box<
             dyn test_context::contract_controller::ContractController<
@@ -215,7 +215,7 @@ impl ContractInitializer<TestContractTest> for Initializer {
         };
 
         contract_template.new(10, &contract_id, 1u128).await?;
-        let owner = roles.get("owner").unwrap().clone().clone();
+        let owner = roles.get("owner").unwrap().clone();
 
         Ok(Box::new(ContractHolder {
             contract: contract_template,
