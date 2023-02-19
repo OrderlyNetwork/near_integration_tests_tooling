@@ -1,13 +1,14 @@
-use std::collections::HashMap;
-
 use async_trait::async_trait;
 use integration_tests_toolset::error::TestError;
+use std::any::Any;
+use std::collections::HashMap;
 use workspaces::{types::Balance, Account, AccountId, Contract};
 
 pub trait ContractController {
     type ContractTemplate;
     fn get_template(&self) -> &Self::ContractTemplate;
     fn get_contract(&self) -> &Contract;
+    fn as_any(&self) -> &dyn Any;
 }
 
 #[async_trait]

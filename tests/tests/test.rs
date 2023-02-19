@@ -232,6 +232,10 @@ impl ContractController for ContractHolder {
     fn get_contract(&self) -> &workspaces::Contract {
         &self.contract.contract
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 #[tokio::test]
@@ -261,6 +265,12 @@ async fn test_ft_transfer_usage() -> anyhow::Result<()> {
         &Initializer {},
     )
     .await?;
+
+    // Downcast to ContractHolder to get access to it's fields (like contract and role_accounts)
+    let _contract_holder = contract_controller
+        .as_any()
+        .downcast_ref::<ContractHolder>()
+        .unwrap();
 
     eth.storage_deposit(
         None,
