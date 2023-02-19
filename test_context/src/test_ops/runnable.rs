@@ -3,14 +3,8 @@ use async_trait::async_trait;
 use integration_tests_toolset::statistic::statistic_consumer::Statistic;
 
 // #[cfg(feature = "stress_test")]
-pub struct Block<T, const N: usize> {
-    pub chain: Vec<Box<dyn Runnable<T, N>>>,
-    pub concurrent: Vec<Box<dyn Runnable<T, N>>>,
-}
-
-// #[cfg(feature = "stress_test")]
 #[async_trait]
-pub trait Runnable<T: Sync + Send + 'static, const N: usize>:
+pub trait Runnable<T: Sync + Send + 'static + std::fmt::Debug, const N: usize>:
     Sync + Send + std::fmt::Debug + 'static
 {
     #[allow(unused_variables)]
@@ -25,7 +19,10 @@ pub trait Runnable<T: Sync + Send + 'static, const N: usize>:
         Ok(())
     }
 
-    async fn run(&self, context: &TestContext<T, N>) -> anyhow::Result<()> {
+    async fn run(&self, context: &TestContext<T, N>) -> anyhow::Result<()>
+    where
+        T: std::fmt::Debug,
+    {
         self.prepare(context).await?;
         let res = self.run_impl(context).await?;
 
@@ -43,7 +40,7 @@ pub trait Runnable<T: Sync + Send + 'static, const N: usize>:
 }
 
 // #[cfg(feature = "stress_test")]
-impl<T: Sync + Send + 'static, const N: usize> Clone for Box<dyn Runnable<T, N>> {
+impl<T: Sync + Send + 'static + std::fmt::Debug, const N: usize> Clone for Box<dyn Runnable<T, N>> {
     fn clone(&self) -> Self {
         self.clone_dyn()
     }
