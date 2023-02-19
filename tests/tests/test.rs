@@ -7,7 +7,7 @@ use test_context::{
     common::{maker_id, TestAccount},
     context::initialize_context,
     contract_controller::{ContractController, ContractInitializer},
-    token_info::eth,
+    token_info::{eth, usdc},
 };
 use test_contract::TestContractTest;
 use workspaces::AccountId;
@@ -260,8 +260,8 @@ async fn test_initializer_usage() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_ft_transfer_usage() -> anyhow::Result<()> {
-    let (_, contract_controller, [eth], accounts) = initialize_context(
-        &[eth()],
+    let (_, contract_controller, [eth, _usdc], accounts) = initialize_context(
+        &[eth(), usdc()],
         &[TestAccount {
             account_id: maker_id(),
             mint_amount: hashmap! {
