@@ -1,17 +1,20 @@
-use crate::statistic::statistic_consumer::{Statistic, StatisticConsumer};
 use async_trait::async_trait;
+use integration_tests_toolset::statistic::statistic_consumer::{Statistic, StatisticConsumer};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
+// #[cfg(feature = "stress_test")]
 pub struct TestContext {
     statistics: Arc<Mutex<Vec<Box<dyn StatisticConsumer>>>>,
 }
 
+// #[cfg(feature = "stress_test")]
 pub struct Block {
     pub chain: Vec<Box<dyn Runnable>>,
     pub concurrent: Vec<Box<dyn Runnable>>,
 }
 
+// #[cfg(feature = "stress_test")]
 #[async_trait]
 pub trait Runnable: Sync + Send + std::fmt::Debug + 'static {
     #[allow(unused_variables)]
@@ -43,6 +46,7 @@ pub trait Runnable: Sync + Send + std::fmt::Debug + 'static {
     fn clone_dyn(&self) -> Box<dyn Runnable>;
 }
 
+// #[cfg(feature = "stress_test")]
 impl Clone for Box<dyn Runnable> {
     fn clone(&self) -> Self {
         self.clone_dyn()

@@ -22,3 +22,5 @@ near-units = "0.2"
 once_cell = "1"
 derive_builder = "0.12.0"
 
+[features]
+stress_test = []

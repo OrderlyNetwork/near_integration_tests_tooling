@@ -177,12 +177,14 @@ pub(crate) fn generate_operation(func_info: &FunctionInfo, struct_name: &str) ->
     }
 
     quote! {
+        #[cfg(feature = "stress_test")]
         #[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
         #[derive(Debug, Clone)]
         pub struct #name_camel_case {
             #struct_params
         }
 
+        #[cfg(feature = "stress_test")]
         #[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
         #[async_trait::async_trait]
         impl integration_tests_toolset::test_ops::runnable::Runnable for #name_camel_case {
@@ -196,6 +198,7 @@ pub(crate) fn generate_operation(func_info: &FunctionInfo, struct_name: &str) ->
             }
         }
 
+        #[cfg(feature = "stress_test")]
         #[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
         impl From<#name_camel_case> for Box<dyn integration_tests_toolset::test_ops::runnable::Runnable> {
             fn from(op: #name_camel_case) -> Self {
@@ -203,6 +206,7 @@ pub(crate) fn generate_operation(func_info: &FunctionInfo, struct_name: &str) ->
             }
         }
 
+        #[cfg(feature = "stress_test")]
         #[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
         impl From<#name_camel_case> for integration_tests_toolset::test_ops::runnable::Block {
             fn from(op: #name_camel_case) -> Self {
