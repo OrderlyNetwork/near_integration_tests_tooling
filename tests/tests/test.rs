@@ -188,14 +188,18 @@ impl ContractInitializer<TestContractTest> for Initializer {
         100_000_000_0000
     }
 
-    fn get_role_accounts(&self) -> HashMap<String, workspaces::AccountId> {
-        HashMap::new()
+    fn get_role_accounts(&self) -> HashMap<String, TestAccount> {
+        hashmap! {
+            "owner".to_string() => TestAccount { account_id: "owner.test.near".parse().unwrap(), mint_amount: hashmap! {
+                eth().to_string() => eth().parse("15").unwrap(),
+            },}
+        }
     }
 
     async fn initialize_contract_template(
         &self,
         contract: workspaces::Contract,
-        _roles: HashMap<String, workspaces::Account>,
+        roles: HashMap<String, &workspaces::Account>,
     ) -> Result<
         Box<
             dyn test_context::contract_controller::ContractController<
@@ -211,15 +215,19 @@ impl ContractInitializer<TestContractTest> for Initializer {
         };
 
         contract_template.new(10, &contract_id, 1u128).await?;
+        let owner = roles.get("owner").unwrap().clone().clone();
 
         Ok(Box::new(ContractHolder {
             contract: contract_template,
+            owner,
         }))
     }
 }
 
+#[allow(dead_code)]
 struct ContractHolder {
     contract: TestContractTest,
+    pub owner: workspaces::Account,
 }
 
 impl ContractController for ContractHolder {
@@ -254,23 +262,23 @@ async fn test_initializer_usage() -> anyhow::Result<()> {
 async fn test_ft_transfer_usage() -> anyhow::Result<()> {
     let (_, contract_controller, [eth], accounts) = initialize_context(
         &[eth()],
-        &[(
-            maker_id(),
-            TestAccount {
-                mint_amount: hashmap! {
-                    eth().to_string() => eth().parse("15")?
-                },
+        &[TestAccount {
+            account_id: maker_id(),
+            mint_amount: hashmap! {
+                eth().to_string() => eth().parse("15")?
             },
-        )],
+        }],
         &Initializer {},
     )
     .await?;
 
     // Downcast to ContractHolder to get access to it's fields (like contract and role_accounts)
-    let _contract_holder = contract_controller
+    let contract_holder = contract_controller
         .as_any()
         .downcast_ref::<ContractHolder>()
         .unwrap();
+
+    let _owner = &contract_holder.owner;
 
     eth.storage_deposit(
         None,

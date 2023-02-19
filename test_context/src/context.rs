@@ -32,7 +32,7 @@ pub struct TestContext<T, const N: usize> {
 impl<T, const N: usize> TestContext<T, N> {
     pub async fn new(
         token_info: &[TokenInfo; N],
-        test_accounts: &[(AccountId, TestAccount); N],
+        test_accounts: &[TestAccount; N],
         contract_initializer: &impl ContractInitializer<T>,
         statistics: Vec<Box<dyn StatisticConsumer>>,
     ) -> anyhow::Result<Self> {
@@ -54,7 +54,7 @@ const JOIN_CHUNK: usize = 100;
 
 pub async fn initialize_context<T, const N: usize>(
     token_infos: &[TokenInfo],
-    test_accounts: &[(AccountId, TestAccount); N],
+    test_accounts: &[TestAccount; N],
     contract_initializer: &impl ContractInitializer<T>,
 ) -> anyhow::Result<(
     Worker<Sandbox>,
@@ -72,10 +72,27 @@ pub async fn initialize_context<T, const N: usize>(
             &contract_wasm
         ),
         try_join_all(contract_initializer.get_role_accounts().into_iter().map(
-            |(role, account_id)| {
+            |(
+                role,
+                TestAccount {
+                    account_id,
+                    mint_amount,
+                },
+            )| {
                 worker
                     .create_tla(account_id.clone(), SecretKey::from_random(KeyType::ED25519))
-                    .map(|result| result.map(|account| (role, account)))
+                    .map(|result| {
+                        result.map(|account| {
+                            (
+                                role,
+                                account,
+                                TestAccount {
+                                    account_id,
+                                    mint_amount,
+                                },
+                            )
+                        })
+                    })
             }
         )),
         try_join_all(token_infos.iter().map(|token_info| {
@@ -85,19 +102,28 @@ pub async fn initialize_context<T, const N: usize>(
                 &token_info.wasm_file,
             )
         })),
-        try_join_all(test_accounts.iter().take(JOIN_MAX).map(|(account_id, _)| {
-            worker.create_tla(account_id.clone(), SecretKey::from_random(KeyType::ED25519))
-        }))
+        try_join_all(test_accounts.iter().take(JOIN_MAX).map(
+            |TestAccount { account_id, .. }| {
+                worker.create_tla(account_id.clone(), SecretKey::from_random(KeyType::ED25519))
+            }
+        ))
     )?;
 
     let contract = contract.into_result()?;
     let contract_accounts = contract_accounts
         .into_iter()
-        .map(|(role, account)| account.into_result().map(|el| (role, el)))
-        .collect::<Result<Vec<(String, Account)>, _>>()?;
+        .map(|(role, account, mint_amount)| account.into_result().map(|el| (role, el, mint_amount)))
+        .collect::<Result<Vec<(String, Account, TestAccount)>, _>>()?;
 
     let contract_controller = contract_initializer
-        .initialize_contract_template(contract, HashMap::from_iter(contract_accounts.into_iter()))
+        .initialize_contract_template(
+            contract,
+            HashMap::from_iter(
+                contract_accounts
+                    .iter()
+                    .map(|(role, account, _)| (role.clone(), account)),
+            ),
+        )
         .await?;
 
     let token_contracts_and_infos = token_contracts
@@ -142,6 +168,9 @@ pub async fn initialize_context<T, const N: usize>(
         contract_controller.get_contract().as_account().id(),
         &accounts,
         test_accounts,
+        contract_accounts
+            .iter()
+            .map(|(_, account, test_account)| (account, test_account)),
     )
     .await?;
 
@@ -174,13 +203,13 @@ pub async fn initialize_context<T, const N: usize>(
 
 async fn create_rest_of_accounts(
     worker: &Worker<Sandbox>,
-    test_accounts: &[(AccountId, TestAccount)],
+    test_accounts: &[TestAccount],
 ) -> anyhow::Result<HashMap<AccountId, Account>> {
     let mut accounts = HashMap::new();
 
     let mut account_tasks: Vec<JoinHandle<anyhow::Result<Account>>> = vec![];
 
-    for (account_id, _) in test_accounts.iter().skip(JOIN_MAX) {
+    for TestAccount { account_id, .. } in test_accounts.iter().skip(JOIN_MAX) {
         let worker = worker.clone();
         let account_id = account_id.clone();
         account_tasks.push(tokio::spawn(async move {
@@ -279,11 +308,12 @@ async fn make_storage_deposits_and_mint_tokens(
     token_contracts_and_infos: &Vec<(TokenInfo, TokenContractTest)>,
     contract_id: &AccountId,
     accounts: &HashMap<AccountId, Account>,
-    test_accounts: &[(AccountId, TestAccount)],
+    test_accounts: &[TestAccount],
+    contract_accounts: impl Iterator<Item = (&Account, &TestAccount)> + Clone,
 ) -> anyhow::Result<()> {
     let futures = FuturesUnordered::new();
     for (token_info, token_contract) in token_contracts_and_infos.iter() {
-        for ((account_id, account), (_, TestAccount { mint_amount })) in
+        for ((account_id, account), TestAccount { mint_amount, .. }) in
             accounts.iter().zip(test_accounts.iter())
         {
             if let Some(amount) = mint_amount.get(&token_info.account_id.to_string()) {
@@ -295,6 +325,20 @@ async fn make_storage_deposits_and_mint_tokens(
                         account,
                     )
                     .and_then(|_| mint_tokens(token_contract, account_id, account, *amount))
+                    .boxed(),
+                );
+            }
+        }
+        for (account, TestAccount { mint_amount, .. }) in contract_accounts.clone() {
+            if let Some(amount) = mint_amount.get(&token_info.account_id.to_string()) {
+                futures.push(
+                    make_storage_deposit(
+                        token_contract,
+                        token_info.storage_deposit_amount,
+                        account.id(),
+                        account,
+                    )
+                    .and_then(|_| mint_tokens(token_contract, account.id(), account, *amount))
                     .boxed(),
                 );
             }
