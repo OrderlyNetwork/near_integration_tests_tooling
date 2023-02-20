@@ -2,7 +2,7 @@ use crate::{
     common::TestAccount,
     contract_controller::{ContractController, ContractInitializer},
     print_log,
-    token_info::{TokenInfo, TokenInitialInfo},
+    token_info::TokenInfo,
 };
 use anyhow::Ok;
 use futures::{
@@ -21,28 +21,28 @@ use workspaces::{
     Account, AccountId, Contract, Worker,
 };
 
-pub struct TestContext<T> {
+pub struct TestContext<T, const N: usize> {
     pub worker: Worker<Sandbox>,
     pub contract_controller: Box<dyn ContractController<ContractTemplate = T>>,
-    pub token_contracts_and_info: HashMap<AccountId, (TokenContractTest, TokenInfo)>,
+    pub token_contracts: [TokenContractTest; N],
     pub accounts: HashMap<AccountId, Account>,
     pub statistics: Arc<Mutex<Vec<Box<dyn StatisticConsumer>>>>,
 }
 
-impl<T> TestContext<T> {
+impl<T, const N: usize> TestContext<T, N> {
     pub async fn new(
-        token_info: Vec<TokenInitialInfo>,
-        test_accounts: HashMap<AccountId, TestAccount>,
+        token_info: &[TokenInfo; N],
+        test_accounts: &[TestAccount],
         contract_initializer: &impl ContractInitializer<T>,
         statistics: Vec<Box<dyn StatisticConsumer>>,
     ) -> anyhow::Result<Self> {
-        let (worker, contract_controller, token_contracts_and_info, accounts) =
+        let (worker, contract_controller, token_contracts, accounts) =
             initialize_context(token_info, test_accounts, contract_initializer).await?;
 
         Ok(Self {
             worker,
             contract_controller,
-            token_contracts_and_info,
+            token_contracts,
             accounts,
             statistics: Arc::new(Mutex::new(statistics)),
         })
@@ -52,94 +52,107 @@ impl<T> TestContext<T> {
 const JOIN_MAX: usize = 500;
 const JOIN_CHUNK: usize = 100;
 
-pub async fn initialize_context<T>(
-    token_infos: Vec<TokenInitialInfo>,
-    test_accounts: HashMap<AccountId, TestAccount>,
+pub async fn initialize_context<T, const N: usize>(
+    token_infos: &[TokenInfo; N],
+    test_accounts: &[TestAccount],
     contract_initializer: &impl ContractInitializer<T>,
 ) -> anyhow::Result<(
     Worker<Sandbox>,
     Box<dyn ContractController<ContractTemplate = T>>,
-    HashMap<AccountId, (TokenContractTest, TokenInfo)>,
+    [TokenContractTest; N],
     HashMap<AccountId, Account>,
 )> {
     let worker = workspaces::sandbox().await?;
     let contract_wasm = contract_initializer.get_wasm();
 
-    let (token_infos, wasm_files): (Vec<_>, Vec<_>) = token_infos
-        .into_iter()
-        .map(
-            |TokenInitialInfo {
-                 token_info,
-                 wasm_file,
-             }| (token_info, wasm_file),
-        )
-        .unzip();
-
     let (contract, contract_accounts, token_contracts, accounts) = try_join!(
         worker.create_tla_and_deploy(
-            contract_initializer.get_id().clone(),
+            contract_initializer.get_id(),
             SecretKey::from_random(KeyType::ED25519),
             &contract_wasm
         ),
         try_join_all(contract_initializer.get_role_accounts().into_iter().map(
-            |(role, account_id)| {
+            |(
+                role,
+                TestAccount {
+                    account_id,
+                    mint_amount,
+                },
+            )| {
                 worker
                     .create_tla(account_id.clone(), SecretKey::from_random(KeyType::ED25519))
-                    .map(|result| result.map(|account| (role, (account_id, account))))
+                    .map(|result| {
+                        result.map(|account| {
+                            (
+                                role,
+                                account,
+                                TestAccount {
+                                    account_id,
+                                    mint_amount,
+                                },
+                            )
+                        })
+                    })
             }
         )),
-        try_join_all(
-            token_infos
-                .into_iter()
-                .enumerate()
-                .map(|(index, token_info)| {
-                    worker
-                        .create_tla_and_deploy(
-                            token_info.account_id.clone(),
-                            SecretKey::from_random(KeyType::ED25519),
-                            &wasm_files[index],
-                        )
-                        .map(|result| result.map(|exec| (exec, token_info)))
-                })
-        ),
-        try_join_all(test_accounts.iter().take(JOIN_MAX).map(|(account_id, _)| {
-            worker.create_tla(account_id.clone(), SecretKey::from_random(KeyType::ED25519))
-        }))
+        try_join_all(token_infos.iter().map(|token_info| {
+            worker.create_tla_and_deploy(
+                token_info.account_id.clone(),
+                SecretKey::from_random(KeyType::ED25519),
+                &token_info.wasm_file,
+            )
+        })),
+        try_join_all(test_accounts.iter().take(JOIN_MAX).map(
+            |TestAccount { account_id, .. }| {
+                worker.create_tla(account_id.clone(), SecretKey::from_random(KeyType::ED25519))
+            }
+        ))
     )?;
 
     let contract = contract.into_result()?;
     let contract_accounts = contract_accounts
         .into_iter()
-        .map(|(role, (account_id, account))| {
-            account.into_result().map(|el| (role, (account_id, el)))
-        })
-        .collect::<Result<Vec<(String, (AccountId, Account))>, _>>()?;
+        .map(|(role, account, mint_amount)| account.into_result().map(|el| (role, el, mint_amount)))
+        .collect::<Result<Vec<(String, Account, TestAccount)>, _>>()?;
 
     let contract_controller = contract_initializer
-        .initialize_contract_template(contract, HashMap::from_iter(contract_accounts.into_iter()))
+        .initialize_contract_template(
+            contract,
+            HashMap::from_iter(
+                contract_accounts
+                    .iter()
+                    .map(|(role, account, _)| (role.clone(), account.clone())),
+            ),
+        )
         .await?;
+    print_log!(
+        "Created contract {}",
+        contract_controller.get_contract().as_account().id().blue()
+    );
 
     let token_contracts_and_infos = token_contracts
         .into_iter()
-        .map(|(token_contract, token_info)| token_contract.into_result().map(|el| (el, token_info)))
+        .zip(token_infos.iter())
+        .map(|(token_contract, token_info)| {
+            token_contract
+                .into_result()
+                .map(|el| (el, token_info.clone()))
+        })
         .collect::<Result<Vec<(Contract, TokenInfo)>, _>>()?
         .into_iter()
         .map(|(token_contract, token_info)| {
             print_log!("Created token {}", token_contract.as_account().id().blue());
             (
-                token_contract.as_account().id().clone(),
-                (
-                    TokenContractTest {
-                        contract: token_contract,
-                        measure_storage_usage: false,
-                    },
-                    token_info,
-                ),
+                token_info,
+                TokenContractTest {
+                    contract: token_contract,
+                    measure_storage_usage: false,
+                },
             )
         })
-        .collect::<HashMap<_, _>>();
+        .collect::<Vec<(_, _)>>();
 
-    initialize_tokens(token_contracts_and_infos.values()).await?;
+    initialize_tokens(token_contracts_and_infos.iter()).await?;
 
     let mut accounts = accounts
         .into_iter()
@@ -152,13 +165,16 @@ pub async fn initialize_context<T>(
         })
         .collect::<HashMap<_, _>>();
 
-    accounts.extend(create_rest_of_accounts(&worker, test_accounts.clone()).await?);
+    accounts.extend(create_rest_of_accounts(&worker, test_accounts).await?);
 
     make_storage_deposits_and_mint_tokens(
         &token_contracts_and_infos,
-        &contract_controller.get_contract().as_account().id(),
+        contract_controller.get_contract().as_account().id(),
         &accounts,
-        &test_accounts,
+        test_accounts,
+        contract_accounts
+            .iter()
+            .map(|(_, account, test_account)| (account, test_account)),
     )
     .await?;
 
@@ -179,20 +195,25 @@ pub async fn initialize_context<T>(
     Ok((
         worker,
         contract_controller,
-        token_contracts_and_infos,
+        token_contracts_and_infos
+            .into_iter()
+            .map(|(_, token_contract)| token_contract)
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap(),
         accounts,
     ))
 }
 
 async fn create_rest_of_accounts(
     worker: &Worker<Sandbox>,
-    test_accounts: HashMap<AccountId, TestAccount>,
+    test_accounts: &[TestAccount],
 ) -> anyhow::Result<HashMap<AccountId, Account>> {
     let mut accounts = HashMap::new();
 
     let mut account_tasks: Vec<JoinHandle<anyhow::Result<Account>>> = vec![];
 
-    for (account_id, _) in test_accounts.iter().skip(JOIN_MAX) {
+    for TestAccount { account_id, .. } in test_accounts.iter().skip(JOIN_MAX) {
         let worker = worker.clone();
         let account_id = account_id.clone();
         account_tasks.push(tokio::spawn(async move {
@@ -220,17 +241,17 @@ async fn create_rest_of_accounts(
 }
 
 async fn initialize_tokens(
-    token_contract_and_infos: impl Iterator<Item = &(TokenContractTest, TokenInfo)>,
+    token_contract_and_infos: impl Iterator<Item = &(TokenInfo, TokenContractTest)>,
 ) -> anyhow::Result<Vec<integration_tests_toolset::tx_result::TxResult<()>>> {
     try_join_all(token_contract_and_infos.map(
         |(
-            test_token_contract,
             TokenInfo {
                 name,
                 ticker,
                 decimals,
                 ..
             },
+            test_token_contract,
         )| {
             test_token_contract.new(
                 name.to_string(),
@@ -288,17 +309,18 @@ async fn mint_tokens(
 }
 
 async fn make_storage_deposits_and_mint_tokens(
-    token_contracts_and_infos: &HashMap<AccountId, (TokenContractTest, TokenInfo)>,
+    token_contracts_and_infos: &Vec<(TokenInfo, TokenContractTest)>,
     contract_id: &AccountId,
     accounts: &HashMap<AccountId, Account>,
-    test_accounts: &HashMap<AccountId, TestAccount>,
+    test_accounts: &[TestAccount],
+    contract_accounts: impl Iterator<Item = (&Account, &TestAccount)> + Clone,
 ) -> anyhow::Result<()> {
     let futures = FuturesUnordered::new();
-    for (token_account_id, (token_contract, token_info)) in token_contracts_and_infos.iter() {
-        for ((account_id, account), (_, TestAccount { mint_amount })) in
+    for (token_info, token_contract) in token_contracts_and_infos.iter() {
+        for ((account_id, account), TestAccount { mint_amount, .. }) in
             accounts.iter().zip(test_accounts.iter())
         {
-            if let Some(amount) = mint_amount.get(&token_account_id.to_string()) {
+            if let Some(amount) = mint_amount.get(&token_info.account_id.to_string()) {
                 futures.push(
                     make_storage_deposit(
                         token_contract,
@@ -307,6 +329,20 @@ async fn make_storage_deposits_and_mint_tokens(
                         account,
                     )
                     .and_then(|_| mint_tokens(token_contract, account_id, account, *amount))
+                    .boxed(),
+                );
+            }
+        }
+        for (account, TestAccount { mint_amount, .. }) in contract_accounts.clone() {
+            if let Some(amount) = mint_amount.get(&token_info.account_id.to_string()) {
+                futures.push(
+                    make_storage_deposit(
+                        token_contract,
+                        token_info.storage_deposit_amount,
+                        account.id(),
+                        account,
+                    )
+                    .and_then(|_| mint_tokens(token_contract, account.id(), account, *amount))
                     .boxed(),
                 );
             }

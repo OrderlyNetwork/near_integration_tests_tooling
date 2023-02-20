@@ -31,21 +31,18 @@ pub(crate) fn parse_func_info(ast: ItemImpl) -> ImplInfo {
             // TODO: provide meaningful error message instead of just panicking
             .unwrap_or_else(|| panic!("{}", "ERROR IN PARSE"))
             .clone(),
-        _ => Ident::new("", Span::call_site().into()),
+        _ => Ident::new("", Span::call_site()),
     };
     let impl_name = format_ident!("{}Test", impl_ident);
     let mut func_infos: Vec<FunctionInfo> = vec![];
 
     for item in ast.items {
-        match item {
-            ImplItem::Method(method) => {
-                if matches!(&method.vis, Visibility::Public(_)) || ast.trait_.is_some() {
-                    parse_item_method(method)
-                        .into_iter()
-                        .for_each(|parsed_func_info| func_infos.push(parsed_func_info));
-                }
+        if let ImplItem::Method(method) = item {
+            if matches!(&method.vis, Visibility::Public(_)) || ast.trait_.is_some() {
+                parse_item_method(method)
+                    .into_iter()
+                    .for_each(|parsed_func_info| func_infos.push(parsed_func_info));
             }
-            _ => {}
         }
     }
 
@@ -56,7 +53,7 @@ pub(crate) fn parse_func_info(ast: ItemImpl) -> ImplInfo {
 }
 
 fn parse_item_method(method: ImplItemMethod) -> Option<FunctionInfo> {
-    let mut params_iter = method.sig.inputs.into_pairs().into_iter();
+    let mut params_iter = method.sig.inputs.into_pairs();
     let is_init = has_attribute(&method.attrs, "init");
 
     // TODO: refactor code below, extract repeated code (they are not identical!)
@@ -76,27 +73,25 @@ fn parse_item_method(method: ImplItemMethod) -> Option<FunctionInfo> {
                 is_init,
             ),
         });
-    } else {
-        if let Some(first_arg) = params_iter.next() {
-            if let FnArg::Receiver(self_value) = first_arg.value() {
-                return Some(FunctionInfo {
-                    function_name: method.sig.ident,
-                    params: get_params(&params_iter),
-                    params_ident: get_idents(&params_iter),
-                    mutability: self_value.mutability.map_or(Mutability::Immutable, |_| {
-                        Mutability::Mutable(if has_attribute(&method.attrs, "payable") {
-                            Payable::Payable
-                        } else {
-                            Payable::NonPayable
-                        })
-                    }),
-                    output: get_output(
-                        &method.sig.output,
-                        has_attribute(&method.attrs, "handle_result"),
-                        is_init,
-                    ),
-                });
-            }
+    } else if let Some(first_arg) = params_iter.next() {
+        if let FnArg::Receiver(self_value) = first_arg.value() {
+            return Some(FunctionInfo {
+                function_name: method.sig.ident,
+                params: get_params(&params_iter),
+                params_ident: get_idents(&params_iter),
+                mutability: self_value.mutability.map_or(Mutability::Immutable, |_| {
+                    Mutability::Mutable(if has_attribute(&method.attrs, "payable") {
+                        Payable::Payable
+                    } else {
+                        Payable::NonPayable
+                    })
+                }),
+                output: get_output(
+                    &method.sig.output,
+                    has_attribute(&method.attrs, "handle_result"),
+                    is_init,
+                ),
+            });
         }
     }
 
@@ -112,10 +107,8 @@ fn get_output(output: &ReturnType, handle_result: bool, is_init: bool) -> Type {
                 if let Some(path) = &tp.path.segments.first() {
                     if path.ident == "Result" && handle_result {
                         if let PathArguments::AngleBracketed(aba) = &path.arguments {
-                            if let Some(ga) = aba.args.first() {
-                                if let syn::GenericArgument::Type(ga_ty) = ga {
-                                    ret = ga_ty.clone();
-                                }
+                            if let Some(syn::GenericArgument::Type(ga_ty)) = aba.args.first() {
+                                ret = ga_ty.clone();
                             }
                         }
                     }
@@ -168,7 +161,7 @@ impl VisitMut for AccountIdReplace {
                 .iter_mut()
                 .for_each(|el| self.visit_type_mut(el)),
             Type::Reference(type_ref) => self.visit_type_mut(type_ref.elem.as_mut()),
-            _ => return,
+            _ => (),
         }
     }
 
@@ -185,11 +178,8 @@ impl VisitMut for AccountIdReplace {
             || path_segment.ident.to_string().contains("Option")
         {
             if let PathArguments::AngleBracketed(angl_bracketed) = &mut path_segment.arguments {
-                if let Some(gen_arg) = angl_bracketed.args.first_mut() {
-                    if let GenericArgument::Type(ty) = gen_arg {
-                        self.visit_type_mut(ty);
-                        return;
-                    }
+                if let Some(GenericArgument::Type(ty)) = angl_bracketed.args.first_mut() {
+                    self.visit_type_mut(ty);
                 }
             }
         }

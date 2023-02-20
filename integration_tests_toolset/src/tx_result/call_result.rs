@@ -29,16 +29,8 @@ where
             storage_usage,
             details: TxResultDetails::Call(CallResult {
                 gas: res.total_gas_burnt,
-                receipt_failures: res
-                    .receipt_failures()
-                    .into_iter()
-                    .map(|f| f.clone())
-                    .collect(),
-                receipt_outcomes: res
-                    .receipt_outcomes()
-                    .into_iter()
-                    .map(|f| f.clone())
-                    .collect(),
+                receipt_failures: res.receipt_failures().into_iter().cloned().collect(),
+                receipt_outcomes: res.receipt_outcomes().to_vec(),
             }),
         })
     }

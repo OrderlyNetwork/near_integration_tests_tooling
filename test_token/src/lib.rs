@@ -28,7 +28,7 @@ pub struct TokenContract {
 
 impl fmt::Debug for TokenContract {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Contract")
+        f.debug_struct("TokenContract")
             .field("name", &self.name)
             .field("symbol", &self.symbol)
             .field("decimals", &self.decimals)
@@ -52,8 +52,23 @@ impl TokenContract {
         self.token.ft_transfer(receiver_id, amount, memo)
     }
 
+    #[payable]
+    pub fn custom_ft_transfer_call(
+        &mut self,
+        receiver_id: AccountId,
+        amount: U128,
+        memo: Option<String>,
+        msg: String,
+    ) {
+        self.token.ft_transfer_call(receiver_id, amount, memo, msg);
+    }
+
     pub fn custom_ft_balance_of(&self, account_id: AccountId) -> U128 {
         self.token.ft_balance_of(account_id)
+    }
+
+    pub fn custom_ft_total_supply(&self) -> U128 {
+        self.token.ft_total_supply()
     }
 }
 
@@ -115,12 +130,7 @@ impl StorageManagement for TokenContract {
 
     #[payable]
     fn storage_unregister(&mut self, force: Option<bool>) -> bool {
-        #[allow(unused_variables)]
-        if let Some((account_id, balance)) = self.token.internal_storage_unregister(force) {
-            true
-        } else {
-            false
-        }
+        self.token.internal_storage_unregister(force).is_some()
     }
 
     fn storage_balance_bounds(&self) -> StorageBalanceBounds {
