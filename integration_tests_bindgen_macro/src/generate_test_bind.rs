@@ -215,24 +215,25 @@ pub(crate) fn generate_operation(
             },
         };
 
-        func_params.extend(quote! {self.#param,});
+        // TODO: try to clone only params, that does not support Copy
+        func_params.extend(quote! {self.#param.clone(),});
     }
 
     let (struct_lifetime, static_lifetime) = (quote! {}, quote! {});
-    // match func_info.mutability {
-    //     Mutability::Mutable(Payable::Payable) => {
-    //         struct_params
-    //             .extend(quote! {pub caller: &'a workspaces::Account, pub attached_deposit: u128,});
-    //         func_params.extend(quote! {self.caller, self.attached_deposit});
-    //         (quote! {<'a>}, quote! {<'static>})
-    //     }
-    //     Mutability::Mutable(Payable::NonPayable) => {
-    //         struct_params.extend(quote! {pub caller: &'a workspaces::Account,});
-    //         func_params.extend(quote! {self.caller});
-    //         (quote! {<'a>}, quote! {<'static>})
-    //     }
-    //     Mutability::Immutable => (quote! {}, quote! {}),
-    // };
+    match func_info.mutability {
+        Mutability::Mutable(Payable::Payable) => {
+            struct_params
+                .extend(quote! {pub caller: workspaces::Account, pub attached_deposit: u128,});
+            func_params.extend(quote! {&self.caller, self.attached_deposit});
+            (quote! {<'a>}, quote! {<'static>})
+        }
+        Mutability::Mutable(Payable::NonPayable) => {
+            struct_params.extend(quote! {pub caller: workspaces::Account,});
+            func_params.extend(quote! {&self.caller});
+            (quote! {<'a>}, quote! {<'static>})
+        }
+        Mutability::Immutable => (quote! {}, quote! {}),
+    };
 
     let test_context = if args.internal {
         quote! {crate}
@@ -252,12 +253,11 @@ pub(crate) fn generate_operation(
         impl<U, const N: usize, const M: usize> #test_context::test_ops::runnable::Runnable<#impl_name, U, N, M> for #name_camel_case {
             async fn run_impl(&self, context: &#test_context::context::TestContext<#impl_name, U, N, M>)
             -> anyhow::Result<Option<integration_tests_toolset::statistic::statistic_consumer::Statistic>> {
-                Ok(Some(integration_tests_toolset::statistic::statistic_consumer::Statistic::default()))
-                // Ok(Some(context
-                // .contract_controller
-                // .get_template()
-                // .#func_name(#func_params)
-                // .await?.into()))
+                Ok(Some(context
+                .contract_controller
+                .get_template()
+                .#func_name(#func_params)
+                .await?.into()))
             }
 
             fn clone_dyn(&self) -> Box<dyn #test_context::test_ops::runnable::Runnable<#impl_name, U, N, M>> {

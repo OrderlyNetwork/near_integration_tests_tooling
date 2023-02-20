@@ -5,6 +5,9 @@ use integration_tests_toolset::statistic::statistic_consumer::Statistic;
 
 use super::runnable::Runnable;
 
+// TODO: add possibility to block to print and clean statistics
+// possibly implement it as trait?
+// or as parameter to block?
 #[derive(Debug, Clone, Default)]
 pub struct Block<T, U, const N: usize, const M: usize>
 where
