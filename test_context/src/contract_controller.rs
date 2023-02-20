@@ -3,7 +3,6 @@ use integration_tests_toolset::error::TestError;
 use std::any::Any;
 use std::collections::HashMap;
 use workspaces::{types::Balance, Account, AccountId, Contract};
-
 use crate::common::TestAccount;
 
 pub trait ContractController: Send + Sync + 'static {
