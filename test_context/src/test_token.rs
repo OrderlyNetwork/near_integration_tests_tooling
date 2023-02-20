@@ -39,7 +39,7 @@ impl fmt::Debug for TokenContract {
 }
 
 // TODO add support for PromiseType and remove this impl
-#[integration_tests_bindgen]
+#[integration_tests_bindgen(internal)]
 #[near_bindgen]
 impl TokenContract {
     #[payable]
@@ -72,7 +72,7 @@ impl TokenContract {
     }
 }
 
-#[integration_tests_bindgen]
+#[integration_tests_bindgen(internal)]
 #[near_bindgen]
 impl TokenContract {
     #[init]
@@ -95,7 +95,7 @@ impl TokenContract {
     }
 }
 
-#[integration_tests_bindgen]
+#[integration_tests_bindgen(internal)]
 #[near_bindgen]
 impl FungibleTokenMetadataProvider for TokenContract {
     fn ft_metadata(&self) -> FungibleTokenMetadata {
@@ -111,7 +111,7 @@ impl FungibleTokenMetadataProvider for TokenContract {
     }
 }
 
-#[integration_tests_bindgen]
+#[integration_tests_bindgen(internal)]
 #[near_bindgen]
 impl StorageManagement for TokenContract {
     #[payable]
@@ -167,7 +167,7 @@ impl FungibleTokenCore for TokenContract {
     }
 }
 
-#[integration_tests_bindgen]
+#[integration_tests_bindgen(internal)]
 #[near_bindgen]
 impl FungibleTokenResolver for TokenContract {
     #[private]

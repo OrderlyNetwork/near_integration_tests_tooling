@@ -5,7 +5,6 @@ use integration_tests_toolset::statistic::statistic_consumer::Statistic;
 
 use super::runnable::Runnable;
 
-// #[cfg(feature = "stress_test")]
 #[derive(Debug, Clone, Default)]
 pub struct Block<T, const N: usize>
 where
@@ -63,5 +62,31 @@ impl<T: Sync + Send + 'static + std::fmt::Debug + Clone, const N: usize> Runnabl
 
     fn clone_dyn(&self) -> Box<dyn Runnable<T, N>> {
         Box::new((*self).clone())
+    }
+}
+
+impl<T, const N: usize> Block<T, N>
+where
+    Box<dyn Runnable<T, N>>: Clone,
+    T: Clone + std::fmt::Debug + 'static,
+{
+    pub fn add_chain_op(mut self, op: Box<dyn Runnable<T, N>>) -> Self {
+        self.chain.push(op);
+        self
+    }
+
+    pub fn add_chain_ops(mut self, ops: &[Box<dyn Runnable<T, N>>]) -> Self {
+        self.chain.extend_from_slice(ops);
+        self
+    }
+
+    pub fn add_concurrent_op(mut self, op: Box<dyn Runnable<T, N>>) -> Self {
+        self.concurrent.push(op);
+        self
+    }
+
+    pub fn add_concurrent_ops<'a>(mut self, ops: &'a [Box<dyn Runnable<T, N>>]) -> Self {
+        self.concurrent.extend_from_slice(ops);
+        self
     }
 }

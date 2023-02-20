@@ -1,8 +1,15 @@
-use crate::types::{FunctionInfo, ImplInfo, Mutability, Payable, StructInfo};
+use crate::types::{
+    FunctionInfo, ImplInfo, IntegrationTestArguments, Mutability, Payable, StructInfo,
+};
+#[cfg(feature = "stress_test")]
 use convert_case::{Case, Casing};
-use proc_macro2::{Ident, TokenStream};
+#[cfg(feature = "stress_test")]
+use proc_macro2::Ident;
+use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
-use syn::{parse_quote, token::Comma, FnArg, Type};
+use syn::{parse_quote, token::Comma};
+#[cfg(feature = "stress_test")]
+use syn::{FnArg, Type};
 
 pub(crate) fn generate_struct(input: TokenStream, struct_info: StructInfo) -> TokenStream {
     let name = format_ident!("{}Test", struct_info.struct_name);
@@ -20,7 +27,11 @@ pub(crate) fn generate_struct(input: TokenStream, struct_info: StructInfo) -> To
     generated_struct
 }
 
-pub(crate) fn generate_impl(input: TokenStream, impl_info: ImplInfo) -> TokenStream {
+pub(crate) fn generate_impl(
+    input: TokenStream,
+    impl_info: ImplInfo,
+    #[allow(unused_variables)] args: &IntegrationTestArguments,
+) -> TokenStream {
     let impl_name = impl_info.impl_name;
     let mut func_stream_vec = vec![];
     for func_info in &impl_info.func_infos {
@@ -44,17 +55,25 @@ pub(crate) fn generate_impl(input: TokenStream, impl_info: ImplInfo) -> TokenStr
             #(#func_stream_vec)*
         }
     };
-    let mut func_operations = vec![];
-    for func_info in impl_info.func_infos {
-        func_operations.push(generate_operation(&func_info, &impl_info.struct_name));
+
+    #[cfg(feature = "stress_test")]
+    {
+        let mut func_operations = vec![];
+        for func_info in impl_info.func_infos {
+            func_operations.push(generate_operation(&func_info, &impl_info.struct_name, args));
+        }
+
+        let mut func_operations_output = quote! {
+            #(#func_operations)*
+        };
+        func_operations_output.extend(input);
+
+        func_output.extend(func_operations_output);
     }
-
-    let mut func_operations_output = quote! {
-        #(#func_operations)*
-    };
-    func_operations_output.extend(input);
-
-    func_output.extend(func_operations_output);
+    #[cfg(not(feature = "stress_test"))]
+    {
+        func_output.extend(input);
+    }
 
     func_output
 }
@@ -152,7 +171,12 @@ pub(crate) fn generate_function(
     }
 }
 
-pub(crate) fn generate_operation(func_info: &FunctionInfo, struct_name: &str) -> TokenStream {
+#[cfg(feature = "stress_test")]
+pub(crate) fn generate_operation(
+    func_info: &FunctionInfo,
+    struct_name: &str,
+    args: &IntegrationTestArguments,
+) -> TokenStream {
     let func_name = func_info.function_name.clone();
 
     let name_str =
@@ -176,39 +200,41 @@ pub(crate) fn generate_operation(func_info: &FunctionInfo, struct_name: &str) ->
         struct_params.extend(quote! {pub #param,});
     }
 
+    let test_context = if args.internal {
+        quote! {crate}
+    } else {
+        quote! {test_context}
+    };
+
     quote! {
-        #[cfg(feature = "stress_test")]
         #[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
         #[derive(Debug, Clone)]
         pub struct #name_camel_case {
             #struct_params
         }
 
-        #[cfg(feature = "stress_test")]
         #[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
         #[async_trait::async_trait]
-        impl integration_tests_toolset::test_ops::runnable::Runnable for #name_camel_case {
-            async fn run_impl(&self, context: &integration_tests_toolset::test_ops::runnable::TestContext)
+        impl<T: Clone + Sync + Send + 'static + std::fmt::Debug, const N: usize> #test_context::test_ops::runnable::Runnable<T, N> for #name_camel_case {
+            async fn run_impl(&self, context: &#test_context::context::TestContext<T, N>)
             -> anyhow::Result<Option<integration_tests_toolset::statistic::statistic_consumer::Statistic>> {
                 Ok(Some(integration_tests_toolset::statistic::statistic_consumer::Statistic::default()))
             }
 
-            fn clone_dyn(&self) -> Box<dyn integration_tests_toolset::test_ops::runnable::Runnable> {
+            fn clone_dyn(&self) -> Box<dyn #test_context::test_ops::runnable::Runnable<T, N>> {
                 Box::new(self.clone())
             }
         }
 
-        #[cfg(feature = "stress_test")]
         #[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
-        impl From<#name_camel_case> for Box<dyn integration_tests_toolset::test_ops::runnable::Runnable> {
+        impl<T: Clone + Sync + Send + 'static + std::fmt::Debug, const N: usize> From<#name_camel_case> for Box<dyn #test_context::test_ops::runnable::Runnable<T, N>> {
             fn from(op: #name_camel_case) -> Self {
                 Box::new(op)
             }
         }
 
-        #[cfg(feature = "stress_test")]
         #[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
-        impl From<#name_camel_case> for integration_tests_toolset::test_ops::runnable::Block {
+        impl<T: Clone + Sync + Send + 'static + std::fmt::Debug, const N: usize> From<#name_camel_case> for #test_context::test_ops::block::Block<T, N> {
             fn from(op: #name_camel_case) -> Self {
                 Self {
                     chain: vec![Box::new(op)],

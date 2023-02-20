@@ -15,6 +15,7 @@ pub(crate) enum Payable {
 
 #[derive(Debug)]
 pub(crate) struct ImplInfo {
+    #[allow(dead_code)]
     pub struct_name: String,
     pub impl_name: Ident,
     pub func_infos: Vec<FunctionInfo>,
@@ -32,4 +33,9 @@ pub(crate) struct FunctionInfo {
 #[derive(Debug)]
 pub(crate) struct StructInfo {
     pub struct_name: Ident,
+}
+
+#[derive(Default)]
+pub(crate) struct IntegrationTestArguments {
+    pub internal: bool,
 }
