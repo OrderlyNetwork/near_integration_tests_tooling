@@ -32,7 +32,7 @@ pub(crate) fn generate_impl(
     impl_info: ImplInfo,
     #[allow(unused_variables)] args: &IntegrationTestArguments,
 ) -> TokenStream {
-    let impl_name = impl_info.impl_name;
+    let impl_name = impl_info.impl_name.clone();
     let mut func_stream_vec = vec![];
     for func_info in &impl_info.func_infos {
         match &func_info.mutability {
@@ -60,7 +60,12 @@ pub(crate) fn generate_impl(
     {
         let mut func_operations = vec![];
         for func_info in impl_info.func_infos {
-            func_operations.push(generate_operation(&func_info, &impl_info.struct_name, args));
+            func_operations.push(generate_operation(
+                &func_info,
+                &impl_info.struct_name,
+                impl_info.impl_name.clone(),
+                args,
+            ));
         }
 
         let mut func_operations_output = quote! {
@@ -175,6 +180,7 @@ pub(crate) fn generate_function(
 pub(crate) fn generate_operation(
     func_info: &FunctionInfo,
     struct_name: &str,
+    impl_name: Ident,
     args: &IntegrationTestArguments,
 ) -> TokenStream {
     let func_name = func_info.function_name.clone();
@@ -200,6 +206,50 @@ pub(crate) fn generate_operation(
         struct_params.extend(quote! {pub #param,});
     }
 
+    let mut func_params = TokenStream::new();
+    for param in &func_info.params {
+        let param = match param {
+            FnArg::Receiver(_) => None,
+            FnArg::Typed(pat_type) => match pat_type.ty.as_ref() {
+                _ => Some(pat_type.pat.clone()),
+            },
+        };
+
+        func_params.extend(quote! {self.#param,});
+    }
+
+    // let mut struct_lifetime = {
+    //     quote! {}
+    // };
+    // let mut func_lifetime = {
+    //     quote! {}
+    // };
+    // let mut impl_lifetime = {
+    //     quote! {}
+    // };
+
+    // match func_info.mutability {
+    //     Mutability::Mutable(Payable::Payable) => {
+    //         // struct_params
+    //         //     .extend(quote! {pub caller: &'a workspaces::Account, pub attached_deposit: u128,});
+    //         struct_params
+    //             .extend(quote! {pub caller: &workspaces::Account, pub attached_deposit: u128,});
+    //         func_params.extend(quote! {self.caller, self.attached_deposit});
+    //         struct_lifetime = quote! {<'a>};
+    //         impl_lifetime = quote! {<'_>};
+    //         func_lifetime = quote! {::<'_>};
+    //     }
+    //     Mutability::Mutable(Payable::NonPayable) => {
+    //         // struct_params.extend(quote! {pub caller: &'a workspaces::Account,});
+    //         struct_params.extend(quote! {pub caller: &workspaces::Account,});
+    //         func_params.extend(quote! {self.caller});
+    //         struct_lifetime = quote! {<'a>};
+    //         impl_lifetime = quote! {<'_>};
+    //         func_lifetime = quote! {::<'_>};
+    //     }
+    //     Mutability::Immutable => {}
+    // }
+
     let test_context = if args.internal {
         quote! {crate}
     } else {
@@ -215,26 +265,31 @@ pub(crate) fn generate_operation(
 
         #[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
         #[async_trait::async_trait]
-        impl<T: Clone + Sync + Send + 'static + std::fmt::Debug, const N: usize> #test_context::test_ops::runnable::Runnable<T, N> for #name_camel_case {
-            async fn run_impl(&self, context: &#test_context::context::TestContext<T, N>)
+        impl<const N: usize> #test_context::test_ops::runnable::Runnable<#impl_name, N> for #name_camel_case {
+            async fn run_impl(&self, context: &#test_context::context::TestContext<#impl_name, N>)
             -> anyhow::Result<Option<integration_tests_toolset::statistic::statistic_consumer::Statistic>> {
                 Ok(Some(integration_tests_toolset::statistic::statistic_consumer::Statistic::default()))
+                // Ok(Some(context
+                // .contract_controller
+                // .get_template()
+                // .#func_name(#func_params)
+                // .await?.into()))
             }
 
-            fn clone_dyn(&self) -> Box<dyn #test_context::test_ops::runnable::Runnable<T, N>> {
+            fn clone_dyn(&self) -> Box<dyn #test_context::test_ops::runnable::Runnable<#impl_name, N>> {
                 Box::new(self.clone())
             }
         }
 
         #[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
-        impl<T: Clone + Sync + Send + 'static + std::fmt::Debug, const N: usize> From<#name_camel_case> for Box<dyn #test_context::test_ops::runnable::Runnable<T, N>> {
+        impl<const N: usize> From<#name_camel_case> for Box<dyn #test_context::test_ops::runnable::Runnable<#impl_name, N>> {
             fn from(op: #name_camel_case) -> Self {
                 Box::new(op)
             }
         }
 
         #[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
-        impl<T: Clone + Sync + Send + 'static + std::fmt::Debug, const N: usize> From<#name_camel_case> for #test_context::test_ops::block::Block<T, N> {
+        impl<const N: usize> From<#name_camel_case> for #test_context::test_ops::block::Block<#impl_name, N> {
             fn from(op: #name_camel_case) -> Self {
                 Self {
                     chain: vec![Box::new(op)],
