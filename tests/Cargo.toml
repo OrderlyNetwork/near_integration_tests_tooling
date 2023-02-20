@@ -6,10 +6,12 @@ publish = false
 
 [dev-dependencies]
 integration_tests_toolset = { path = "../integration_tests_toolset" }
+test_context = {path = "../test_context"}
 workspaces = {version = "0.7.0"}
 serde_json = "1.0"
 tokio = { version = "1.14", features = ["full"] }
 anyhow = "1.0"
 near-units = "0.2.0"
+async-trait = "0.1.63"
 
 test_contract = { path = "test_contract"}
