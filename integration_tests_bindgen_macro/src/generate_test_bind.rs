@@ -249,8 +249,8 @@ pub(crate) fn generate_operation(
 
         #[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
         #[async_trait::async_trait]
-        impl<const N: usize> #test_context::test_ops::runnable::Runnable<#impl_name, N> for #name_camel_case {
-            async fn run_impl(&self, context: &#test_context::context::TestContext<#impl_name, N>)
+        impl<U, const N: usize, const M: usize> #test_context::test_ops::runnable::Runnable<#impl_name, U, N, M> for #name_camel_case {
+            async fn run_impl(&self, context: &#test_context::context::TestContext<#impl_name, U, N, M>)
             -> anyhow::Result<Option<integration_tests_toolset::statistic::statistic_consumer::Statistic>> {
                 Ok(Some(integration_tests_toolset::statistic::statistic_consumer::Statistic::default()))
                 // Ok(Some(context
@@ -260,20 +260,20 @@ pub(crate) fn generate_operation(
                 // .await?.into()))
             }
 
-            fn clone_dyn(&self) -> Box<dyn #test_context::test_ops::runnable::Runnable<#impl_name, N>> {
+            fn clone_dyn(&self) -> Box<dyn #test_context::test_ops::runnable::Runnable<#impl_name, U, N, M>> {
                 Box::new(self.clone())
             }
         }
 
         #[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
-        impl<const N: usize> From<#name_camel_case #static_lifetime> for Box<dyn #test_context::test_ops::runnable::Runnable<#impl_name, N>> {
+        impl<U, const N: usize, const M: usize> From<#name_camel_case #static_lifetime> for Box<dyn #test_context::test_ops::runnable::Runnable<#impl_name, U, N, M>> {
             fn from(op: #name_camel_case #static_lifetime) -> Self {
                 Box::new(op)
             }
         }
 
         #[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
-        impl<const N: usize> From<#name_camel_case #static_lifetime> for #test_context::test_ops::block::Block<#impl_name, N> {
+        impl<U, const N: usize, const M: usize> From<#name_camel_case #static_lifetime> for #test_context::test_ops::block::Block<#impl_name, U, N, M> {
             fn from(op: #name_camel_case #static_lifetime) -> Self {
                 Self {
                     chain: vec![Box::new(op)],

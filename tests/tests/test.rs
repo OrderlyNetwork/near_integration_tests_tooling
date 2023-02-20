@@ -2,11 +2,11 @@ use async_trait::async_trait;
 use integration_tests_toolset::{error::TestError, statistic::gas_usage_aggregator::GasUsage};
 use maplit::hashmap;
 use near_units::parse_near;
-use std::collections::HashMap;
+use std::{any::Any, collections::HashMap};
 use test_context::{
     common::{maker_id, TestAccount},
     context::initialize_context,
-    contract_controller::{ContractController, ContractInitializer},
+    contract_controller::{ContractController, ContractInitializer, ControllerAsAny},
     token_info::{eth, usdc},
 };
 use test_contract::TestContractTest;
@@ -175,7 +175,7 @@ async fn integration_test_example() -> anyhow::Result<()> {
 pub struct Initializer {}
 
 #[async_trait]
-impl ContractInitializer<TestContractTest> for Initializer {
+impl ContractInitializer<TestContractTest, ContractHolder> for Initializer {
     fn get_id(&self) -> AccountId {
         "any_acc.test.near".parse().unwrap()
     }
@@ -204,6 +204,7 @@ impl ContractInitializer<TestContractTest> for Initializer {
         Box<
             dyn test_context::contract_controller::ContractController<
                 ContractTemplate = TestContractTest,
+                DowncastType = ContractHolder,
             >,
         >,
         TestError,
@@ -240,8 +241,15 @@ impl ContractController for ContractHolder {
     fn get_contract(&self) -> &workspaces::Contract {
         &self.contract.contract
     }
+}
 
-    fn as_any(&self) -> &dyn std::any::Any {
+impl ControllerAsAny for ContractHolder {
+    type DowncastType = ContractHolder;
+    fn get_type(&self) -> &Self::DowncastType {
+        self.as_any().downcast_ref::<Self::DowncastType>().unwrap()
+    }
+
+    fn as_any(&self) -> &dyn Any {
         self
     }
 }
@@ -260,7 +268,7 @@ async fn test_initializer_usage() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_ft_transfer_usage() -> anyhow::Result<()> {
-    let (_, contract_controller, [eth, _usdc], accounts) = initialize_context(
+    let (_, contract_controller, [eth, _usdc], [(_, maker_account)]) = initialize_context(
         &[eth(), usdc()],
         &[TestAccount {
             account_id: maker_id(),
@@ -273,10 +281,7 @@ async fn test_ft_transfer_usage() -> anyhow::Result<()> {
     .await?;
 
     // Downcast to ContractHolder to get access to it's fields (like contract and role_accounts)
-    let contract_holder = contract_controller
-        .as_any()
-        .downcast_ref::<ContractHolder>()
-        .unwrap();
+    let contract_holder = contract_controller.get_type();
 
     let _owner = &contract_holder.owner;
 
@@ -316,14 +321,12 @@ async fn test_ft_transfer_usage() -> anyhow::Result<()> {
         10
     );
 
-    let maker = accounts.get(&maker_id()).unwrap();
-
     eth.custom_ft_transfer_call(
         contract_controller.get_contract().id().clone(),
         10.into(),
         None,
         "Get my money!".to_owned(),
-        maker,
+        &maker_account,
         1u128,
     )
     .await?;

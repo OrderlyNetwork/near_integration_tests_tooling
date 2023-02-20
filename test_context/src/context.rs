@@ -13,7 +13,7 @@ use integration_tests_toolset::statistic::statistic_consumer::StatisticConsumer;
 use near_sdk::{json_types::U128, Balance};
 use near_units::parse_near;
 use owo_colors::OwoColorize;
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, convert::TryInto, sync::Arc};
 use tokio::{sync::Mutex, task::JoinHandle};
 use workspaces::{
     network::Sandbox,
@@ -21,19 +21,19 @@ use workspaces::{
     Account, AccountId, Contract, Worker,
 };
 
-pub struct TestContext<T: Sync + Send, const N: usize> {
+pub struct TestContext<T: Sync + Send, U, const N: usize, const M: usize> {
     pub worker: Worker<Sandbox>,
-    pub contract_controller: Box<dyn ContractController<ContractTemplate = T>>,
+    pub contract_controller: Box<dyn ContractController<ContractTemplate = T, DowncastType = U>>,
     pub token_contracts: [TokenContractTest; N],
-    pub accounts: HashMap<AccountId, Account>,
+    pub accounts: [(AccountId, Account); M],
     pub statistics: Arc<Mutex<Vec<Box<dyn StatisticConsumer>>>>,
 }
 
-impl<T: Sync + Send, const N: usize> TestContext<T, N> {
+impl<T: Sync + Send, U, const N: usize, const M: usize> TestContext<T, U, N, M> {
     pub async fn new(
         token_info: &[TokenInfo; N],
-        test_accounts: &[TestAccount],
-        contract_initializer: &(impl ContractInitializer<T> + Sync + Send),
+        test_accounts: &[TestAccount; M],
+        contract_initializer: &(impl ContractInitializer<T, U> + Sync + Send),
         statistics: Vec<Box<dyn StatisticConsumer>>,
     ) -> anyhow::Result<Self> {
         let (worker, contract_controller, token_contracts, accounts) =
@@ -52,15 +52,15 @@ impl<T: Sync + Send, const N: usize> TestContext<T, N> {
 const JOIN_MAX: usize = 500;
 const JOIN_CHUNK: usize = 100;
 
-pub async fn initialize_context<T, const N: usize>(
+pub async fn initialize_context<T, U, const N: usize, const M: usize>(
     token_infos: &[TokenInfo; N],
-    test_accounts: &[TestAccount],
-    contract_initializer: &(impl ContractInitializer<T> + Sync + Send),
+    test_accounts: &[TestAccount; M],
+    contract_initializer: &(impl ContractInitializer<T, U> + Sync + Send),
 ) -> anyhow::Result<(
     Worker<Sandbox>,
-    Box<dyn ContractController<ContractTemplate = T>>,
+    Box<dyn ContractController<ContractTemplate = T, DowncastType = U>>,
     [TokenContractTest; N],
-    HashMap<AccountId, Account>,
+    [(AccountId, Account); M],
 )> {
     let worker = workspaces::sandbox().await?;
     let contract_wasm = contract_initializer.get_wasm();
@@ -163,7 +163,7 @@ pub async fn initialize_context<T, const N: usize>(
             print_log!("Created account {}", test_account.id().bright_green());
             (test_account.id().clone(), test_account)
         })
-        .collect::<HashMap<_, _>>();
+        .collect::<Vec<(AccountId, Account)>>();
 
     accounts.extend(create_rest_of_accounts(&worker, test_accounts).await?);
 
@@ -201,7 +201,7 @@ pub async fn initialize_context<T, const N: usize>(
             .collect::<Vec<_>>()
             .try_into()
             .unwrap(),
-        accounts,
+        accounts.try_into().unwrap(),
     ))
 }
 
@@ -311,7 +311,7 @@ async fn mint_tokens(
 async fn make_storage_deposits_and_mint_tokens(
     token_contracts_and_infos: &Vec<(TokenInfo, TokenContractTest)>,
     contract_id: &AccountId,
-    accounts: &HashMap<AccountId, Account>,
+    accounts: &[(AccountId, Account)],
     test_accounts: &[TestAccount],
     contract_accounts: impl Iterator<Item = (&Account, &TestAccount)> + Clone,
 ) -> anyhow::Result<()> {
