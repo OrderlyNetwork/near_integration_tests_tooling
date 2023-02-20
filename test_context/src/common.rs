@@ -28,5 +28,6 @@ pub fn account_id(index: u32) -> AccountId {
 
 #[derive(Debug, Clone)]
 pub struct TestAccount {
+    pub account_id: AccountId,
     pub mint_amount: HashMap<String, Balance>,
 }

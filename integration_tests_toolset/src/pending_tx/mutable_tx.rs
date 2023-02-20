@@ -23,7 +23,7 @@ impl<'a> MutablePendingTx<'a> {
 impl<'a> Call for MutablePendingTx<'a> {
     async fn call(self, caller: &Account) -> workspaces::result::Result<ExecutionFinalResult> {
         caller
-            .call(&self.contract.id(), &self.function_name)
+            .call(self.contract.id(), &self.function_name)
             .args(self.args)
             .max_gas()
             .transact()

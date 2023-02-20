@@ -43,11 +43,11 @@ pub fn integration_tests_bindgen(_args: TokenStream, input: TokenStream) -> Toke
     input
 }
 
-fn is_marked_near_bindgen(attrs: &Vec<Attribute>) -> bool {
+fn is_marked_near_bindgen(attrs: &[Attribute]) -> bool {
     has_attribute(attrs, "near_bindgen")
 }
 
-pub(crate) fn has_attribute(attrs: &Vec<Attribute>, name: &str) -> bool {
+pub(crate) fn has_attribute(attrs: &[Attribute], name: &str) -> bool {
     attrs
         .iter()
         .map(|attr| attr.parse_meta())
@@ -56,7 +56,7 @@ pub(crate) fn has_attribute(attrs: &Vec<Attribute>, name: &str) -> bool {
                 .path()
                 .get_ident()
                 .map(|el| el.to_string())
-                .filter(|el| *el == String::from(name))
+                .filter(|el| el == name)
                 .is_some(),
             Err(_) => false,
         })

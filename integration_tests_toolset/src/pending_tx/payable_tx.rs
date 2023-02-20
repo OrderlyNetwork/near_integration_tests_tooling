@@ -30,7 +30,7 @@ impl<'a> PayablePendingTx<'a> {
 impl<'a> Call for PayablePendingTx<'a> {
     async fn call(self, caller: &Account) -> workspaces::result::Result<ExecutionFinalResult> {
         caller
-            .call(&self.contract.id(), &self.function_name)
+            .call(self.contract.id(), &self.function_name)
             .args(self.args)
             .deposit(self.attached_deposit)
             .max_gas()

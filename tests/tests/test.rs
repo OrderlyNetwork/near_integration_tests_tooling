@@ -1,11 +1,13 @@
 use async_trait::async_trait;
 use integration_tests_toolset::{error::TestError, statistic::gas_usage_aggregator::GasUsage};
+use maplit::hashmap;
 use near_units::parse_near;
 use std::collections::HashMap;
 use test_context::{
+    common::{maker_id, TestAccount},
     context::initialize_context,
     contract_controller::{ContractController, ContractInitializer},
-    token_info::{eth, TokenInitialInfo},
+    token_info::{eth, usdc},
 };
 use test_contract::TestContractTest;
 use workspaces::AccountId;
@@ -186,14 +188,18 @@ impl ContractInitializer<TestContractTest> for Initializer {
         100_000_000_0000
     }
 
-    fn get_role_accounts(&self) -> HashMap<String, workspaces::AccountId> {
-        HashMap::new()
+    fn get_role_accounts(&self) -> HashMap<String, TestAccount> {
+        hashmap! {
+            "owner".to_string() => TestAccount { account_id: "owner.test.near".parse().unwrap(), mint_amount: hashmap! {
+                eth().to_string() => eth().parse("15").unwrap(),
+            },}
+        }
     }
 
     async fn initialize_contract_template(
         &self,
         contract: workspaces::Contract,
-        _roles: HashMap<String, (workspaces::AccountId, workspaces::Account)>,
+        roles: HashMap<String, workspaces::Account>,
     ) -> Result<
         Box<
             dyn test_context::contract_controller::ContractController<
@@ -209,15 +215,19 @@ impl ContractInitializer<TestContractTest> for Initializer {
         };
 
         contract_template.new(10, &contract_id, 1u128).await?;
+        let owner = roles.get("owner").unwrap().clone();
 
         Ok(Box::new(ContractHolder {
             contract: contract_template,
+            owner,
         }))
     }
 }
 
+#[allow(dead_code)]
 struct ContractHolder {
     contract: TestContractTest,
+    pub owner: workspaces::Account,
 }
 
 impl ContractController for ContractHolder {
@@ -230,12 +240,15 @@ impl ContractController for ContractHolder {
     fn get_contract(&self) -> &workspaces::Contract {
         &self.contract.contract
     }
+
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
 }
 
 #[tokio::test]
 async fn test_initializer_usage() -> anyhow::Result<()> {
-    let (_, contract_controller, _, _) =
-        initialize_context::<TestContractTest>(vec![], HashMap::new(), &Initializer {}).await?;
+    let (_, contract_controller, _, _) = initialize_context(&[], &[], &Initializer {}).await?;
 
     let contract_template = contract_controller.get_template();
 
@@ -247,62 +260,80 @@ async fn test_initializer_usage() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_ft_transfer_usage() -> anyhow::Result<()> {
-    let (_, contract_controller, token_info, _) = initialize_context::<TestContractTest>(
-        vec![TokenInitialInfo {
-            token_info: eth(),
-            wasm_file: include_bytes!("../../res/test_token.wasm").to_vec(),
+    let (_, contract_controller, [eth, _usdc], accounts) = initialize_context(
+        &[eth(), usdc()],
+        &[TestAccount {
+            account_id: maker_id(),
+            mint_amount: hashmap! {
+                eth().to_string() => eth().parse("15")?
+            },
         }],
-        HashMap::new(),
         &Initializer {},
     )
     .await?;
 
-    let (token_template, _) = token_info.get(&eth().account_id).unwrap();
+    // Downcast to ContractHolder to get access to it's fields (like contract and role_accounts)
+    let contract_holder = contract_controller
+        .as_any()
+        .downcast_ref::<ContractHolder>()
+        .unwrap();
 
-    token_template
-        .storage_deposit(
-            None,
-            None,
-            contract_controller.get_contract().as_account(),
-            parse_near!("1N"),
-        )
+    let _owner = &contract_holder.owner;
+
+    eth.storage_deposit(
+        None,
+        None,
+        contract_controller.get_contract().as_account(),
+        parse_near!("1N"),
+    )
+    .await?;
+
+    eth.storage_deposit(None, None, eth.contract.as_account(), parse_near!("1N"))
         .await?;
 
-    token_template
-        .storage_deposit(
-            None,
-            None,
-            token_template.contract.as_account(),
-            parse_near!("1N"),
-        )
-        .await?;
+    eth.mint(
+        eth.contract.id().clone(),
+        10.into(),
+        eth.contract.as_account(),
+        1u128,
+    )
+    .await?;
 
-    token_template
-        .mint(
-            token_template.contract.id().clone(),
-            10.into(),
-            token_template.contract.as_account(),
-            1u128,
-        )
-        .await?;
-
-    token_template
-        .custom_ft_transfer(
-            contract_controller.get_contract().id().clone(),
-            10.into(),
-            None,
-            token_template.contract.as_account(),
-            1u128,
-        )
-        .await?;
+    eth.custom_ft_transfer(
+        contract_controller.get_contract().id().clone(),
+        10.into(),
+        None,
+        eth.contract.as_account(),
+        1u128,
+    )
+    .await?;
 
     assert_eq!(
-        token_template
-            .custom_ft_balance_of(contract_controller.get_contract().id().clone())
+        eth.custom_ft_balance_of(contract_controller.get_contract().id().clone())
             .await?
             .value
             .0,
         10
+    );
+
+    let maker = accounts.get(&maker_id()).unwrap();
+
+    eth.custom_ft_transfer_call(
+        contract_controller.get_contract().id().clone(),
+        10.into(),
+        None,
+        "Get my money!".to_owned(),
+        maker,
+        1u128,
+    )
+    .await?;
+
+    assert_eq!(
+        eth.custom_ft_balance_of(contract_controller.get_contract().id().clone())
+            .await?
+            .value
+            .0,
+        20
     );
 
     Ok(())
