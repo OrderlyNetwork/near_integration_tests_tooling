@@ -18,7 +18,7 @@ impl<T> From<TxResult<T>> for Statistic {
 }
 
 // Every entity which will work with statistics should implement this trait
-pub trait StatisticConsumer: Sync + Send + 'static + std::fmt::Debug {
+pub trait StatisticConsumer: Sync + Send + std::fmt::Debug {
     fn consume_statistic(&mut self, stat: Statistic);
     fn print_statistic(&self) -> String;
 }

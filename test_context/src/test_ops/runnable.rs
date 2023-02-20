@@ -3,8 +3,8 @@ use async_trait::async_trait;
 use integration_tests_toolset::statistic::statistic_consumer::Statistic;
 
 #[async_trait]
-pub trait Runnable<T: Sync + Send + 'static + std::fmt::Debug, const N: usize>:
-    Sync + Send + std::fmt::Debug + 'static
+pub trait Runnable<T: Sync + Send + std::fmt::Debug, const N: usize>:
+    Sync + Send + std::fmt::Debug
 {
     #[allow(unused_variables)]
     async fn prepare(&self, context: &TestContext<T, N>) -> anyhow::Result<()> {
@@ -38,7 +38,7 @@ pub trait Runnable<T: Sync + Send + 'static + std::fmt::Debug, const N: usize>:
     fn clone_dyn(&self) -> Box<dyn Runnable<T, N>>;
 }
 
-impl<T: Sync + Send + 'static + std::fmt::Debug, const N: usize> Clone for Box<dyn Runnable<T, N>> {
+impl<T: Sync + Send + std::fmt::Debug, const N: usize> Clone for Box<dyn Runnable<T, N>> {
     fn clone(&self) -> Self {
         self.clone_dyn()
     }

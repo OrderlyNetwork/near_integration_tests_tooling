@@ -1,11 +1,11 @@
+use crate::common::TestAccount;
 use async_trait::async_trait;
 use integration_tests_toolset::error::TestError;
 use std::any::Any;
 use std::collections::HashMap;
 use workspaces::{types::Balance, Account, AccountId, Contract};
-use crate::common::TestAccount;
 
-pub trait ContractController: Send + Sync + 'static {
+pub trait ContractController: Send + Sync {
     type ContractTemplate;
     fn get_template(&self) -> &Self::ContractTemplate;
     fn get_contract(&self) -> &Contract;

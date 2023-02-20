@@ -21,7 +21,7 @@ use workspaces::{
     Account, AccountId, Contract, Worker,
 };
 
-pub struct TestContext<T: Sync + Send + 'static, const N: usize> {
+pub struct TestContext<T: Sync + Send, const N: usize> {
     pub worker: Worker<Sandbox>,
     pub contract_controller: Box<dyn ContractController<ContractTemplate = T>>,
     pub token_contracts: [TokenContractTest; N],
@@ -29,11 +29,11 @@ pub struct TestContext<T: Sync + Send + 'static, const N: usize> {
     pub statistics: Arc<Mutex<Vec<Box<dyn StatisticConsumer>>>>,
 }
 
-impl<T: Sync + Send + 'static, const N: usize> TestContext<T, N> {
+impl<T: Sync + Send, const N: usize> TestContext<T, N> {
     pub async fn new(
         token_info: &[TokenInfo; N],
         test_accounts: &[TestAccount],
-        contract_initializer: &(impl ContractInitializer<T> + Sync + Send + 'static),
+        contract_initializer: &(impl ContractInitializer<T> + Sync + Send),
         statistics: Vec<Box<dyn StatisticConsumer>>,
     ) -> anyhow::Result<Self> {
         let (worker, contract_controller, token_contracts, accounts) =
@@ -52,10 +52,10 @@ impl<T: Sync + Send + 'static, const N: usize> TestContext<T, N> {
 const JOIN_MAX: usize = 500;
 const JOIN_CHUNK: usize = 100;
 
-pub async fn initialize_context<T: 'static, const N: usize>(
+pub async fn initialize_context<T, const N: usize>(
     token_infos: &[TokenInfo; N],
     test_accounts: &[TestAccount],
-    contract_initializer: &(impl ContractInitializer<T> + Sync + Send + 'static),
+    contract_initializer: &(impl ContractInitializer<T> + Sync + Send),
 ) -> anyhow::Result<(
     Worker<Sandbox>,
     Box<dyn ContractController<ContractTemplate = T>>,

@@ -17,7 +17,7 @@ where
 
 impl<T, const N: usize> Block<T, N>
 where
-    Box<(dyn Runnable<T, N> + 'static)>: Clone,
+    Box<(dyn Runnable<T, N>)>: Clone,
     T: Clone + std::fmt::Debug,
 {
     pub fn new() -> Self {
@@ -28,7 +28,7 @@ where
     }
 }
 
-impl<T: Sync + Send + 'static + std::fmt::Debug + Clone, const N: usize> From<Block<T, N>>
+impl<T: Sync + Send + std::fmt::Debug + Clone + 'static, const N: usize> From<Block<T, N>>
     for Box<dyn Runnable<T, N>>
 {
     fn from(block: Block<T, N>) -> Self {
@@ -37,7 +37,7 @@ impl<T: Sync + Send + 'static + std::fmt::Debug + Clone, const N: usize> From<Bl
 }
 
 #[async_trait]
-impl<T: Sync + Send + 'static + std::fmt::Debug + Clone, const N: usize> Runnable<T, N>
+impl<T: Sync + Send + std::fmt::Debug + Clone + 'static, const N: usize> Runnable<T, N>
     for Block<T, N>
 {
     async fn run_impl(&self, context: &TestContext<T, N>) -> anyhow::Result<Option<Statistic>> {
@@ -68,7 +68,7 @@ impl<T: Sync + Send + 'static + std::fmt::Debug + Clone, const N: usize> Runnabl
 impl<T, const N: usize> Block<T, N>
 where
     Box<dyn Runnable<T, N>>: Clone,
-    T: Clone + std::fmt::Debug + 'static,
+    T: Clone + std::fmt::Debug,
 {
     pub fn add_chain_op(mut self, op: Box<dyn Runnable<T, N>>) -> Self {
         self.chain.push(op);
