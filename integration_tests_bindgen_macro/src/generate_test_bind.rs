@@ -218,37 +218,21 @@ pub(crate) fn generate_operation(
         func_params.extend(quote! {self.#param,});
     }
 
-    // let mut struct_lifetime = {
-    //     quote! {}
-    // };
-    // let mut func_lifetime = {
-    //     quote! {}
-    // };
-    // let mut impl_lifetime = {
-    //     quote! {}
-    // };
-
+    let (struct_lifetime, static_lifetime) = (quote! {}, quote! {});
     // match func_info.mutability {
     //     Mutability::Mutable(Payable::Payable) => {
-    //         // struct_params
-    //         //     .extend(quote! {pub caller: &'a workspaces::Account, pub attached_deposit: u128,});
     //         struct_params
-    //             .extend(quote! {pub caller: &workspaces::Account, pub attached_deposit: u128,});
+    //             .extend(quote! {pub caller: &'a workspaces::Account, pub attached_deposit: u128,});
     //         func_params.extend(quote! {self.caller, self.attached_deposit});
-    //         struct_lifetime = quote! {<'a>};
-    //         impl_lifetime = quote! {<'_>};
-    //         func_lifetime = quote! {::<'_>};
+    //         (quote! {<'a>}, quote! {<'static>})
     //     }
     //     Mutability::Mutable(Payable::NonPayable) => {
-    //         // struct_params.extend(quote! {pub caller: &'a workspaces::Account,});
-    //         struct_params.extend(quote! {pub caller: &workspaces::Account,});
+    //         struct_params.extend(quote! {pub caller: &'a workspaces::Account,});
     //         func_params.extend(quote! {self.caller});
-    //         struct_lifetime = quote! {<'a>};
-    //         impl_lifetime = quote! {<'_>};
-    //         func_lifetime = quote! {::<'_>};
+    //         (quote! {<'a>}, quote! {<'static>})
     //     }
-    //     Mutability::Immutable => {}
-    // }
+    //     Mutability::Immutable => (quote! {}, quote! {}),
+    // };
 
     let test_context = if args.internal {
         quote! {crate}
@@ -259,7 +243,7 @@ pub(crate) fn generate_operation(
     quote! {
         #[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
         #[derive(Debug, Clone)]
-        pub struct #name_camel_case {
+        pub struct #name_camel_case #struct_lifetime{
             #struct_params
         }
 
@@ -282,15 +266,15 @@ pub(crate) fn generate_operation(
         }
 
         #[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
-        impl<const N: usize> From<#name_camel_case> for Box<dyn #test_context::test_ops::runnable::Runnable<#impl_name, N>> {
-            fn from(op: #name_camel_case) -> Self {
+        impl<const N: usize> From<#name_camel_case #static_lifetime> for Box<dyn #test_context::test_ops::runnable::Runnable<#impl_name, N>> {
+            fn from(op: #name_camel_case #static_lifetime) -> Self {
                 Box::new(op)
             }
         }
 
         #[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
-        impl<const N: usize> From<#name_camel_case> for #test_context::test_ops::block::Block<#impl_name, N> {
-            fn from(op: #name_camel_case) -> Self {
+        impl<const N: usize> From<#name_camel_case #static_lifetime> for #test_context::test_ops::block::Block<#impl_name, N> {
+            fn from(op: #name_camel_case #static_lifetime) -> Self {
                 Self {
                     chain: vec![Box::new(op)],
                     concurrent: vec![],
