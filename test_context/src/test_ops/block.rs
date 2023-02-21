@@ -1,6 +1,6 @@
 use crate::context::TestContext;
 use async_trait::async_trait;
-use futures::{future::join_all, stream::FuturesUnordered, StreamExt};
+use futures::{future::try_join_all, try_join};
 use integration_tests_toolset::statistic::statistic_consumer::Statistic;
 
 use super::runnable::Runnable;
@@ -55,20 +55,19 @@ impl<
         &self,
         context: &TestContext<T, U, N, M>,
     ) -> anyhow::Result<Option<Statistic>> {
-        let unordered_futures = FuturesUnordered::new();
-
-        unordered_futures.push(join_all(self.chain.iter().map(|op| op.run(context))));
-
-        for op in self.concurrent.iter() {
-            unordered_futures.push(join_all([op.run(context)].into_iter()));
-        }
-
-        unordered_futures
-            .collect::<Vec<_>>()
-            .await
-            .into_iter()
-            .flatten()
-            .collect::<Result<Vec<_>, _>>()?;
+        try_join!(
+            try_join_all(
+                [|| async {
+                    for op in self.chain.iter() {
+                        op.run(context).await?;
+                    }
+                    Ok(())
+                }]
+                .iter()
+                .map(|a| a())
+            ),
+            try_join_all(self.concurrent.iter().map(|op| op.run(context)))
+        )?;
 
         Ok(None)
     }
