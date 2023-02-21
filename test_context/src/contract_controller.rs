@@ -7,7 +7,7 @@ use workspaces::{types::Balance, Account, AccountId, Contract};
 
 pub trait ControllerAsAny {
     type DowncastType;
-    fn get_type(&self) -> &Self::DowncastType;
+    fn get_downcast_type(&self) -> &Self::DowncastType;
     fn as_any(&self) -> &dyn Any;
 }
 

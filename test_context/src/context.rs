@@ -25,7 +25,7 @@ pub struct TestContext<T: Sync + Send, U, const N: usize, const M: usize> {
     pub worker: Worker<Sandbox>,
     pub contract_controller: Box<dyn ContractController<ContractTemplate = T, DowncastType = U>>,
     pub token_contracts: [TokenContractTest; N],
-    pub accounts: [(AccountId, Account); M],
+    pub accounts: [Account; M],
     pub statistics: Arc<Mutex<Vec<Box<dyn StatisticConsumer>>>>,
 }
 
@@ -60,7 +60,7 @@ pub async fn initialize_context<T, U, const N: usize, const M: usize>(
     Worker<Sandbox>,
     Box<dyn ContractController<ContractTemplate = T, DowncastType = U>>,
     [TokenContractTest; N],
-    [(AccountId, Account); M],
+    [Account; M],
 )> {
     let worker = workspaces::sandbox().await?;
     let contract_wasm = contract_initializer.get_wasm();
@@ -161,9 +161,9 @@ pub async fn initialize_context<T, U, const N: usize, const M: usize>(
         .into_iter()
         .map(|test_account| {
             print_log!("Created account {}", test_account.id().bright_green());
-            (test_account.id().clone(), test_account)
+            test_account
         })
-        .collect::<Vec<(AccountId, Account)>>();
+        .collect::<Vec<Account>>();
 
     accounts.extend(create_rest_of_accounts(&worker, test_accounts).await?);
 
@@ -208,8 +208,8 @@ pub async fn initialize_context<T, U, const N: usize, const M: usize>(
 async fn create_rest_of_accounts(
     worker: &Worker<Sandbox>,
     test_accounts: &[TestAccount],
-) -> anyhow::Result<HashMap<AccountId, Account>> {
-    let mut accounts = HashMap::new();
+) -> anyhow::Result<Vec<Account>> {
+    let mut accounts = Vec::new();
 
     let mut account_tasks: Vec<JoinHandle<anyhow::Result<Account>>> = vec![];
 
@@ -227,14 +227,14 @@ async fn create_rest_of_accounts(
         if account_tasks.len() >= 200 {
             for task in account_tasks.drain(..JOIN_CHUNK) {
                 let account = task.await??;
-                accounts.insert(account.id().clone(), account);
+                accounts.push(account);
             }
         }
     }
 
     for task in account_tasks {
         let account = task.await??;
-        accounts.insert(account.id().clone(), account);
+        accounts.push(account);
     }
 
     Ok(accounts)
@@ -311,24 +311,23 @@ async fn mint_tokens(
 async fn make_storage_deposits_and_mint_tokens(
     token_contracts_and_infos: &Vec<(TokenInfo, TokenContractTest)>,
     contract_id: &AccountId,
-    accounts: &[(AccountId, Account)],
+    accounts: &[Account],
     test_accounts: &[TestAccount],
     contract_accounts: impl Iterator<Item = (&Account, &TestAccount)> + Clone,
 ) -> anyhow::Result<()> {
     let futures = FuturesUnordered::new();
     for (token_info, token_contract) in token_contracts_and_infos.iter() {
-        for ((account_id, account), TestAccount { mint_amount, .. }) in
-            accounts.iter().zip(test_accounts.iter())
+        for (account, TestAccount { mint_amount, .. }) in accounts.iter().zip(test_accounts.iter())
         {
             if let Some(amount) = mint_amount.get(&token_info.account_id.to_string()) {
                 futures.push(
                     make_storage_deposit(
                         token_contract,
                         token_info.storage_deposit_amount,
-                        account_id,
+                        account.id(),
                         account,
                     )
-                    .and_then(|_| mint_tokens(token_contract, account_id, account, *amount))
+                    .and_then(|_| mint_tokens(token_contract, account.id(), account, *amount))
                     .boxed(),
                 );
             }
