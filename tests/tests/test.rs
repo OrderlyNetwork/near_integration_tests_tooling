@@ -245,7 +245,8 @@ impl ContractController for ContractHolder {
 
 impl ControllerAsAny for ContractHolder {
     type DowncastType = ContractHolder;
-    fn get_type(&self) -> &Self::DowncastType {
+
+    fn get_downcast_type(&self) -> &Self::DowncastType {
         self.as_any().downcast_ref::<Self::DowncastType>().unwrap()
     }
 
@@ -268,7 +269,7 @@ async fn test_initializer_usage() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_ft_transfer_usage() -> anyhow::Result<()> {
-    let (_, contract_controller, [eth, _usdc], [(_, maker_account)]) = initialize_context(
+    let (_, contract_controller, [eth, _usdc], [maker_account]) = initialize_context(
         &[eth(), usdc()],
         &[TestAccount {
             account_id: maker_id(),
@@ -281,7 +282,7 @@ async fn test_ft_transfer_usage() -> anyhow::Result<()> {
     .await?;
 
     // Downcast to ContractHolder to get access to it's fields (like contract and role_accounts)
-    let contract_holder = contract_controller.get_type();
+    let contract_holder = contract_controller.get_downcast_type();
 
     let _owner = &contract_holder.owner;
 
@@ -304,7 +305,7 @@ async fn test_ft_transfer_usage() -> anyhow::Result<()> {
     )
     .await?;
 
-    eth.custom_ft_transfer(
+    eth.ft_transfer(
         contract_controller.get_contract().id().clone(),
         10.into(),
         None,
@@ -314,14 +315,14 @@ async fn test_ft_transfer_usage() -> anyhow::Result<()> {
     .await?;
 
     assert_eq!(
-        eth.custom_ft_balance_of(contract_controller.get_contract().id().clone())
+        eth.ft_balance_of(contract_controller.get_contract().id().clone())
             .await?
             .value
             .0,
         10
     );
 
-    eth.custom_ft_transfer_call(
+    eth.ft_transfer_call(
         contract_controller.get_contract().id().clone(),
         10.into(),
         None,
@@ -332,7 +333,7 @@ async fn test_ft_transfer_usage() -> anyhow::Result<()> {
     .await?;
 
     assert_eq!(
-        eth.custom_ft_balance_of(contract_controller.get_contract().id().clone())
+        eth.ft_balance_of(contract_controller.get_contract().id().clone())
             .await?
             .value
             .0,
