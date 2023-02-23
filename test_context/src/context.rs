@@ -2,6 +2,7 @@ use crate::{
     common::TestAccount,
     contract_controller::{ContractController, ContractInitializer},
     print_log,
+    test_token::TokenContractTest,
     token_info::TokenInfo,
 };
 use anyhow::Ok;
@@ -13,7 +14,6 @@ use near_sdk::{json_types::U128, Balance};
 use near_units::parse_near;
 use owo_colors::OwoColorize;
 use std::{collections::HashMap, convert::TryInto, sync::Arc};
-use test_token::TokenContractTest;
 use tokio::{sync::Mutex, task::JoinHandle};
 use workspaces::{
     network::Sandbox,
@@ -21,7 +21,7 @@ use workspaces::{
     Account, AccountId, Contract, Worker,
 };
 
-pub struct TestContext<T, U, const N: usize, const M: usize> {
+pub struct TestContext<T: Sync + Send, U, const N: usize, const M: usize> {
     pub worker: Worker<Sandbox>,
     pub contract_controller: Box<dyn ContractController<ContractTemplate = T, DowncastType = U>>,
     pub token_contracts: [TokenContractTest; N],
@@ -29,11 +29,11 @@ pub struct TestContext<T, U, const N: usize, const M: usize> {
     pub statistics: Arc<Mutex<Vec<Box<dyn StatisticConsumer>>>>,
 }
 
-impl<T, U, const N: usize, const M: usize> TestContext<T, U, N, M> {
+impl<T: Sync + Send, U, const N: usize, const M: usize> TestContext<T, U, N, M> {
     pub async fn new(
         token_info: &[TokenInfo; N],
         test_accounts: &[TestAccount; M],
-        contract_initializer: &impl ContractInitializer<T, U>,
+        contract_initializer: &(impl ContractInitializer<T, U> + Sync + Send),
         statistics: Vec<Box<dyn StatisticConsumer>>,
     ) -> anyhow::Result<Self> {
         let (worker, contract_controller, token_contracts, accounts) =
@@ -47,6 +47,20 @@ impl<T, U, const N: usize, const M: usize> TestContext<T, U, N, M> {
             statistics: Arc::new(Mutex::new(statistics)),
         })
     }
+
+    pub async fn print_statistics(&self) {
+        let statistics = self.statistics.lock().await;
+        for statistic in statistics.iter() {
+            println!("{}", statistic.print_statistic());
+        }
+    }
+
+    pub async fn clean_statistics(&self) {
+        let mut statistics = self.statistics.lock().await;
+        for statistic in statistics.iter_mut() {
+            statistic.clean_statistic();
+        }
+    }
 }
 
 const JOIN_MAX: usize = 500;
@@ -55,7 +69,7 @@ const JOIN_CHUNK: usize = 100;
 pub async fn initialize_context<T, U, const N: usize, const M: usize>(
     token_infos: &[TokenInfo; N],
     test_accounts: &[TestAccount; M],
-    contract_initializer: &impl ContractInitializer<T, U>,
+    contract_initializer: &(impl ContractInitializer<T, U> + Sync + Send),
 ) -> anyhow::Result<(
     Worker<Sandbox>,
     Box<dyn ContractController<ContractTemplate = T, DowncastType = U>>,

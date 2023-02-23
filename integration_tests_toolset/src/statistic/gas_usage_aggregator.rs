@@ -1,13 +1,51 @@
 use super::statistic_consumer::{Statistic, StatisticConsumer};
 use crate::tx_result::TxResultDetails;
+use owo_colors::OwoColorize;
 use prettytable::{row, Table};
-use std::collections::HashMap;
+use std::collections::{BinaryHeap, HashMap};
 use workspaces::types::Gas;
 
-// TODO: add min, max, median gas usage
+#[derive(Debug)]
+pub struct OpertionGasUsage {
+    pub heap: BinaryHeap<Gas>,
+}
+
+#[derive(Debug)]
+pub struct OperationGasStatistic {
+    pub min: Gas,
+    pub max: Gas,
+    pub median: Gas,
+}
+
+impl From<&OpertionGasUsage> for OperationGasStatistic {
+    fn from(op_gas: &OpertionGasUsage) -> Self {
+        let gas_vec: Vec<Gas> = op_gas.heap.clone().into_sorted_vec();
+        if gas_vec.is_empty() {
+            return Self {
+                min: 0,
+                max: 0,
+                median: 0,
+            };
+        } else {
+            return Self {
+                min: gas_vec.first().cloned().unwrap_or_default(),
+                max: gas_vec.last().cloned().unwrap_or_default(),
+                median: {
+                    let mid = gas_vec.len() / 2;
+                    if gas_vec.len() % 2 == 0 {
+                        (gas_vec[mid] + gas_vec[mid - 1]) / 2
+                    } else {
+                        gas_vec[mid]
+                    }
+                },
+            };
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct GasUsage {
-    pub func_gas: HashMap<String, Gas>,
+    pub func_gas: HashMap<String, OpertionGasUsage>,
 }
 
 impl GasUsage {
@@ -24,21 +62,52 @@ impl Default for GasUsage {
     }
 }
 
-// TODO: implement async guard for HashMap
+trait GasPrinter {
+    fn print_gas(&self) -> String;
+}
+
+impl GasPrinter for Gas {
+    fn print_gas(&self) -> String {
+        format!(
+            "{:.3} {} ({:.3} {})",
+            (*self as f64 / 1_000_000_000_000.).bright_magenta().bold(),
+            "Tgas",
+            (*self as f64 / 10_000_000_000_000.).bright_magenta().bold(),
+            "mNEAR"
+        )
+    }
+}
+
 impl StatisticConsumer for GasUsage {
     fn consume_statistic(&mut self, stat: Statistic) {
         if let TxResultDetails::Call(call_data) = stat.details {
-            self.func_gas.insert(stat.func_name, call_data.gas);
+            let op_gas = self
+                .func_gas
+                .entry(stat.func_name)
+                .or_insert_with(|| OpertionGasUsage {
+                    heap: BinaryHeap::new(),
+                });
+            op_gas.heap.push(call_data.gas);
         }
     }
 
     fn print_statistic(&self) -> String {
         let mut table = Table::new();
-        table.add_row(row!["Function", "Gas"]);
+        table.add_row(row!["Function", "Min", "Median", "Max"]);
         for (func, gas) in self.func_gas.iter() {
-            table.add_row(row![func, gas]);
+            let gas_stat = OperationGasStatistic::from(gas);
+            table.add_row(row![
+                func.green().bold(),
+                gas_stat.min.print_gas(),
+                gas_stat.median.print_gas(),
+                gas_stat.max.print_gas()
+            ]);
         }
         format!("{}", table)
+    }
+
+    fn clean_statistic(&mut self) {
+        self.func_gas.clear();
     }
 
     // TODO: add functions for returning statistics as structure and as table
