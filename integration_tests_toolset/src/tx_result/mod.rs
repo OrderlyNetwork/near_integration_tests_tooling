@@ -1,4 +1,5 @@
 pub mod call_result;
+pub mod log_parser;
 pub mod view_result;
 
 pub use self::{call_result::CallResult, view_result::ViewResult};

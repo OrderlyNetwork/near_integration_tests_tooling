@@ -17,3 +17,4 @@ integration_tests_toolset = {path = "../../integration_tests_toolset"}
 [target.'cfg(not(all(target_arch = "wasm32", target_os = "unknown")))'.dependencies]
 workspaces = "0.7"
 anyhow = "1"
+async-trait = "0.1"
