@@ -39,7 +39,7 @@ impl<T: Sync + Send + std::fmt::Debug, U, const N: usize, const M: usize> Clone
 }
 
 #[macro_export]
-macro_rules! runnable {(
+macro_rules! make_runnable {(
     $struct_vis:vis struct $struct_name:ident {
          $(
              $(#[$field_meta:meta])*
