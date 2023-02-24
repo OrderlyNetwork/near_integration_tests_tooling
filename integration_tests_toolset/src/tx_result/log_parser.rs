@@ -6,15 +6,15 @@ pub trait LogParser {
     where
         E: for<'a> serde::Deserialize<'a>;
 
-    fn check_for_event<E>(self, event: E) -> Self
+    fn assert_event<E>(self, event: E) -> Self
     where
         E: for<'a> serde::Deserialize<'a> + PartialEq + std::fmt::Debug,
         Self: Sized,
     {
-        self.check_for_events(&[event])
+        self.assert_events(&[event])
     }
 
-    fn check_for_events<E>(self, events: &[E]) -> Self
+    fn assert_events<E>(self, events: &[E]) -> Self
     where
         E: for<'a> serde::Deserialize<'a> + PartialEq + std::fmt::Debug,
         Self: Sized,
@@ -24,6 +24,28 @@ pub trait LogParser {
             assert!(log_events.contains(event), "Event {:?} not found", event);
         }
         self
+    }
+
+    fn check_event<E>(self, event: E) -> bool
+    where
+        E: for<'a> serde::Deserialize<'a> + PartialEq + std::fmt::Debug,
+        Self: Sized,
+    {
+        self.check_events(&[event])
+    }
+
+    fn check_events<E>(self, events: &[E]) -> bool
+    where
+        E: for<'a> serde::Deserialize<'a> + PartialEq + std::fmt::Debug,
+        Self: Sized,
+    {
+        let log_events = self.events_from_logs::<E>();
+        for event in events {
+            if !log_events.contains(event) {
+                return false;
+            }
+        }
+        true
     }
 }
 

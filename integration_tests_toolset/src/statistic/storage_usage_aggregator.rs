@@ -66,7 +66,16 @@ trait StoragePrinter {
 
 impl StoragePrinter for i64 {
     fn print_storage(&self) -> String {
-        format!("{} {}", (*self).bright_magenta().bold(), "bytes",)
+        format!(
+            "{:.3} {} ({:.5} {})",
+            (*self).bright_magenta().bold(),
+            "bytes",
+            (*self as f64
+                / (near_sdk::ONE_NEAR.saturating_div(near_sdk::env::storage_byte_cost()) as f64))
+                .bright_magenta()
+                .bold(),
+            "NEAR"
+        )
     }
 }
 

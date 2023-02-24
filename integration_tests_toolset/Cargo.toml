@@ -8,6 +8,7 @@ edition = "2021"
 [target.'cfg(not(all(target_arch = "wasm32", target_os = "unknown")))'.dependencies]
 anyhow = "1"
 async-trait = "0.1.63"
+near-sdk = "4"
 owo-colors = "3"
 prettytable-rs = "0.10"
 serde = "1"

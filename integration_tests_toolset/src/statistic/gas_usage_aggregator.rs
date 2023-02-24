@@ -69,11 +69,13 @@ trait GasPrinter {
 impl GasPrinter for Gas {
     fn print_gas(&self) -> String {
         format!(
-            "{:.3} {} ({:.3} {})",
+            "{:.3} {} ({:.6} {})",
             (*self as f64 / 1_000_000_000_000.).bright_magenta().bold(),
             "Tgas",
-            (*self as f64 / 10_000_000_000_000.).bright_magenta().bold(),
-            "mNEAR"
+            (*self as f64 / 10_000_000_000_000_000.)
+                .bright_magenta()
+                .bold(),
+            "NEAR"
         )
     }
 }
@@ -109,6 +111,4 @@ impl StatisticConsumer for GasUsage {
     fn clean_statistic(&mut self) {
         self.func_gas.clear();
     }
-
-    // TODO: add functions for returning statistics as structure and as table
 }
