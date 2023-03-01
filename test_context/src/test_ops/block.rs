@@ -32,7 +32,7 @@ where
 
 impl<
         T: Sync + Send + std::fmt::Debug + Clone + 'static,
-        U: std::fmt::Debug + Clone + 'static,
+        U: Sync + Send + std::fmt::Debug + Clone + 'static,
         const N: usize,
         const M: usize,
     > From<Block<T, U, N, M>> for Box<dyn Runnable<T, U, N, M>>
@@ -45,7 +45,7 @@ impl<
 #[async_trait]
 impl<
         T: Sync + Send + std::fmt::Debug + Clone + 'static,
-        U: std::fmt::Debug + Clone + 'static,
+        U: Sync + Send + std::fmt::Debug + Clone + 'static,
         const N: usize,
         const M: usize,
     > Runnable<T, U, N, M> for Block<T, U, N, M>

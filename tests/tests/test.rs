@@ -6,12 +6,12 @@ use integration_tests_toolset::{
 };
 use maplit::hashmap;
 use near_units::parse_near;
-use std::{any::Any, collections::HashMap, pin::Pin};
+use std::{collections::HashMap, pin::Pin};
 use test_context::{
     batch::{make_op, Batch},
     common::{maker_id, TestAccount},
     context::initialize_context,
-    contract_controller::{ContractController, ContractInitializer, ControllerAsAny},
+    contract_initializer::ContractInitializer,
     token_info::{eth, usdc},
 };
 use test_contract::TestContractTest;
@@ -205,15 +205,7 @@ impl ContractInitializer<TestContractTest, ContractHolder> for Initializer {
         &self,
         contract: workspaces::Contract,
         roles: HashMap<String, workspaces::Account>,
-    ) -> Result<
-        Box<
-            dyn test_context::contract_controller::ContractController<
-                ContractTemplate = TestContractTest,
-                DowncastType = ContractHolder,
-            >,
-        >,
-        TestError,
-    > {
+    ) -> Result<(TestContractTest, ContractHolder), TestError> {
         let contract_id = contract.as_account().clone();
         let contract_template = TestContractTest {
             contract,
@@ -223,48 +215,18 @@ impl ContractInitializer<TestContractTest, ContractHolder> for Initializer {
         contract_template.new(10, &contract_id, 1u128).await?;
         let owner = roles.get("owner").unwrap().clone();
 
-        Ok(Box::new(ContractHolder {
-            contract: contract_template,
-            owner,
-        }))
+        Ok((contract_template, ContractHolder { owner }))
     }
 }
 
 #[allow(dead_code)]
 struct ContractHolder {
-    contract: TestContractTest,
     pub owner: workspaces::Account,
-}
-
-impl ContractController for ContractHolder {
-    type ContractTemplate = TestContractTest;
-
-    fn get_template(&self) -> &Self::ContractTemplate {
-        &self.contract
-    }
-
-    fn get_contract(&self) -> &workspaces::Contract {
-        &self.contract.contract
-    }
-}
-
-impl ControllerAsAny for ContractHolder {
-    type DowncastType = ContractHolder;
-
-    fn get_downcast_type(&self) -> &Self::DowncastType {
-        self.as_any().downcast_ref::<Self::DowncastType>().unwrap()
-    }
-
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
 }
 
 #[tokio::test]
 async fn test_initializer_usage() -> anyhow::Result<()> {
-    let (_, contract_controller, _, _) = initialize_context(&[], &[], &Initializer {}).await?;
-
-    let contract_template = contract_controller.get_template();
+    let (_, contract_template, _, _, _) = initialize_context(&[], &[], &Initializer {}).await?;
 
     let res = contract_template.view_no_param_ret_u64().await?;
     assert_eq!(res.value, 10);
@@ -274,27 +236,25 @@ async fn test_initializer_usage() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_ft_transfer_usage() -> anyhow::Result<()> {
-    let (_, contract_controller, [eth, _usdc], [maker_account]) = initialize_context(
-        &[eth(), usdc()],
-        &[TestAccount {
-            account_id: maker_id(),
-            mint_amount: hashmap! {
-                eth().to_string() => eth().parse("15")?
-            },
-        }],
-        &Initializer {},
-    )
-    .await?;
-
-    // Downcast to ContractHolder to get access to it's fields (like contract and role_accounts)
-    let contract_holder = contract_controller.get_downcast_type();
+    let (_, contract_template, contract_holder, [eth, _usdc], [maker_account]) =
+        initialize_context(
+            &[eth(), usdc()],
+            &[TestAccount {
+                account_id: maker_id(),
+                mint_amount: hashmap! {
+                    eth().to_string() => eth().parse("15")?
+                },
+            }],
+            &Initializer {},
+        )
+        .await?;
 
     let _owner = &contract_holder.owner;
 
     eth.storage_deposit(
         None,
         None,
-        contract_controller.get_contract().as_account(),
+        contract_template.contract.as_account(),
         parse_near!("1N"),
     )
     .await?;
@@ -311,7 +271,7 @@ async fn test_ft_transfer_usage() -> anyhow::Result<()> {
     .await?;
 
     eth.ft_transfer(
-        contract_controller.get_contract().id().clone(),
+        contract_template.contract.id().clone(),
         10.into(),
         None,
         eth.contract.as_account(),
@@ -320,7 +280,7 @@ async fn test_ft_transfer_usage() -> anyhow::Result<()> {
     .await?;
 
     assert_eq!(
-        eth.ft_balance_of(contract_controller.get_contract().id().clone())
+        eth.ft_balance_of(contract_template.contract.id().clone())
             .await?
             .value
             .0,
@@ -328,7 +288,7 @@ async fn test_ft_transfer_usage() -> anyhow::Result<()> {
     );
 
     eth.ft_transfer_call(
-        contract_controller.get_contract().id().clone(),
+        contract_template.contract.id().clone(),
         10.into(),
         None,
         "Get my money!".to_owned(),
@@ -338,7 +298,7 @@ async fn test_ft_transfer_usage() -> anyhow::Result<()> {
     .await?;
 
     assert_eq!(
-        eth.ft_balance_of(contract_controller.get_contract().id().clone())
+        eth.ft_balance_of(contract_template.contract.id().clone())
             .await?
             .value
             .0,
@@ -350,7 +310,7 @@ async fn test_ft_transfer_usage() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn block_operations_test() -> anyhow::Result<()> {
-    let (_, contract_controller, [_eth, _usdc], [maker_account]) = initialize_context(
+    let (_, template, _, [_eth, _usdc], [maker_account]) = initialize_context(
         &[eth(), usdc()],
         &[TestAccount {
             account_id: maker_id(),
@@ -363,8 +323,6 @@ async fn block_operations_test() -> anyhow::Result<()> {
     .await?;
 
     let mut statistic_consumer = GasUsage::new();
-
-    let template = contract_controller.get_template();
 
     let fut = template
         .call_no_param_ret_u64(&maker_account)

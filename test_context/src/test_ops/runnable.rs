@@ -9,11 +9,14 @@ pub trait Runnable<T: Sync + Send + std::fmt::Debug, U, const N: usize, const M:
     async fn run_impl(
         &self,
         context: &TestContext<T, U, N, M>,
-    ) -> anyhow::Result<Option<Statistic>>;
+    ) -> anyhow::Result<Option<Statistic>>
+    where
+        U: Sync + Send;
 
     async fn run(&self, context: &TestContext<T, U, N, M>) -> anyhow::Result<()>
     where
         T: std::fmt::Debug,
+        U: Sync + Send,
     {
         let res = self.run_impl(context).await?;
 
@@ -46,7 +49,7 @@ macro_rules! make_runnable {(
              $field_vis:vis $field_name:ident : $field_type:ty
          ),*$(,)*
      }$(,)*
-     async fn run_impl (&$self:ident, $context:ident: &TestContext<$contract_template:ty, U, N, M>,) -> $func_ret:ty $run_impl_body:block
+     async fn run_impl (&$self:ident, $context:ident: &TestContext<$contract_template:ty, U, N, M>,) -> $func_ret:ty where U: Sync + Send,$run_impl_body:block
  ) => {
      #[derive(Debug, Clone)]
      $struct_vis struct $struct_name {
@@ -56,7 +59,10 @@ macro_rules! make_runnable {(
      #[async_trait]
      impl<U, const N: usize, const M: usize> Runnable<$contract_template, U, N, M> for $struct_name {
          #[allow(unused_variables)]
-         async fn run_impl (&$self, $context: &TestContext<$contract_template, U, N, M>,) -> $func_ret {
+         async fn run_impl (&$self, $context: &TestContext<$contract_template, U, N, M>,) -> $func_ret
+         where
+            U: Sync + Send,
+         {
              $run_impl_body
          }
 
