@@ -6,7 +6,7 @@ use std::collections::{BinaryHeap, HashMap};
 use workspaces::types::Gas;
 
 #[derive(Debug)]
-pub struct OpertionGasUsage {
+pub struct OperationGasUsage {
     pub heap: BinaryHeap<Gas>,
 }
 
@@ -17,8 +17,8 @@ pub struct OperationGasStatistic {
     pub median: Gas,
 }
 
-impl From<&OpertionGasUsage> for OperationGasStatistic {
-    fn from(op_gas: &OpertionGasUsage) -> Self {
+impl From<&OperationGasUsage> for OperationGasStatistic {
+    fn from(op_gas: &OperationGasUsage) -> Self {
         let gas_vec: Vec<Gas> = op_gas.heap.clone().into_sorted_vec();
         if gas_vec.is_empty() {
             return Self {
@@ -45,7 +45,7 @@ impl From<&OpertionGasUsage> for OperationGasStatistic {
 
 #[derive(Debug)]
 pub struct GasUsage {
-    pub func_gas: HashMap<String, OpertionGasUsage>,
+    pub func_gas: HashMap<String, OperationGasUsage>,
 }
 
 impl GasUsage {
@@ -86,7 +86,7 @@ impl StatisticConsumer for GasUsage {
             let op_gas = self
                 .func_gas
                 .entry(stat.func_name)
-                .or_insert_with(|| OpertionGasUsage {
+                .or_insert_with(|| OperationGasUsage {
                     heap: BinaryHeap::new(),
                 });
             op_gas.heap.push(call_data.gas);

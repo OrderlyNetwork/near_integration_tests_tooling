@@ -1,9 +1,14 @@
 use async_trait::async_trait;
-use integration_tests_toolset::{error::TestError, statistic::gas_usage_aggregator::GasUsage};
+use futures::FutureExt;
+use integration_tests_toolset::{
+    error::TestError,
+    statistic::{gas_usage_aggregator::GasUsage, statistic_consumer::Statistic},
+};
 use maplit::hashmap;
 use near_units::parse_near;
-use std::{any::Any, collections::HashMap};
+use std::{any::Any, collections::HashMap, pin::Pin};
 use test_context::{
+    batch::{make_op, Batch},
     common::{maker_id, TestAccount},
     context::initialize_context,
     contract_controller::{ContractController, ContractInitializer, ControllerAsAny},
@@ -339,6 +344,79 @@ async fn test_ft_transfer_usage() -> anyhow::Result<()> {
             .0,
         20
     );
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn block_operations_test() -> anyhow::Result<()> {
+    let (_, contract_controller, [_eth, _usdc], [maker_account]) = initialize_context(
+        &[eth(), usdc()],
+        &[TestAccount {
+            account_id: maker_id(),
+            mint_amount: hashmap! {
+                eth().to_string() => eth().parse("15")?
+            },
+        }],
+        &Initializer {},
+    )
+    .await?;
+
+    let mut statistic_consumer = GasUsage::new();
+
+    let template = contract_controller.get_template();
+
+    let fut = template
+        .call_no_param_ret_u64(&maker_account)
+        .map(|res| {
+            res.map(|tx| {
+                let tx = tx.populate_statistic(&mut [&mut statistic_consumer]);
+                Statistic::from(tx)
+            })
+        })
+        .boxed();
+
+    fn f<'a>(
+        template: &'a TestContractTest,
+        maker_account_id: AccountId,
+    ) -> Pin<Box<dyn futures::Future<Output = Result<Statistic, TestError>> + std::marker::Send + 'a>>
+    {
+        template
+            .view_account_id(maker_account_id)
+            .map(|res| res.map(|tx| tx.into()))
+            .boxed()
+    }
+
+    let fut2 = || {
+        template
+            .call_no_param_ret_u64(&maker_account)
+            .map(|res| res.map(|tx| Statistic::from(tx)))
+            .boxed()
+    };
+
+    let fut3 = template
+        .view_account_id(maker_account.id().clone())
+        .boxed()
+        .into();
+
+    let block1 = Batch::new()
+        .add_concurrent_ops(vec![
+            fut.into(),
+            make_op(template.view_account_id(maker_account.id().clone())),
+            make_op(template.view_account_id(maker_account.id().clone())),
+        ])
+        .add_chain_op(make_op(
+            template.view_account_id(maker_account.id().clone()),
+        ))
+        .add_chain_op(
+            Batch::new()
+                .add_chain_op(fut2().into())
+                .add_concurrent_op(fut3)
+                .into(),
+        );
+
+    let res = block1.run().await?;
+    res.iter().for_each(|stat| println!("{:?}", stat));
 
     Ok(())
 }

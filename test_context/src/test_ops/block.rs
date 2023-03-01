@@ -1,9 +1,8 @@
+use super::runnable::Runnable;
 use crate::context::TestContext;
 use async_trait::async_trait;
 use futures::{future::try_join_all, try_join};
 use integration_tests_toolset::statistic::statistic_consumer::Statistic;
-
-use super::runnable::Runnable;
 
 // TODO: add possibility to block to print and clean statistics
 // possibly implement it as trait?
