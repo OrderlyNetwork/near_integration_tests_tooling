@@ -20,7 +20,7 @@ pub trait Runnable<T: Sync + Send + std::fmt::Debug, U, const N: usize, const M:
         if let Some(stat) = res {
             let mut statistics = context.statistics.lock().await;
             for statistic in statistics.iter_mut() {
-                statistic.consume_statistic(stat.clone());
+                statistic.consume_statistic(&stat);
             }
         }
 

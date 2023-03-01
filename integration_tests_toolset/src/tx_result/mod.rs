@@ -41,7 +41,8 @@ where
 {
     pub fn populate_statistic(self, consumers: &mut [&mut impl StatisticConsumer]) -> Self {
         consumers.iter_mut().for_each(|con| {
-            con.consume_statistic(self.clone().into());
+            let statistic = self.clone().into();
+            con.consume_statistic(&statistic);
         });
         self
     }

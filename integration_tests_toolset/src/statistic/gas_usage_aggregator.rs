@@ -1,4 +1,7 @@
-use super::statistic_consumer::{Statistic, StatisticConsumer};
+use super::{
+    statistic_consumer::{Statistic, StatisticConsumer},
+    statistic_printer::StatisticPrinter,
+};
 use crate::tx_result::TxResultDetails;
 use owo_colors::OwoColorize;
 use prettytable::{row, Table};
@@ -81,11 +84,11 @@ impl GasPrinter for Gas {
 }
 
 impl StatisticConsumer for GasUsage {
-    fn consume_statistic(&mut self, stat: Statistic) {
-        if let TxResultDetails::Call(call_data) = stat.details {
+    fn consume_statistic(&mut self, stat: &Statistic) {
+        if let TxResultDetails::Call(call_data) = &stat.details {
             let op_gas = self
                 .func_gas
-                .entry(stat.func_name)
+                .entry(stat.func_name.clone())
                 .or_insert_with(|| OperationGasUsage {
                     heap: BinaryHeap::new(),
                 });
@@ -93,6 +96,12 @@ impl StatisticConsumer for GasUsage {
         }
     }
 
+    fn clean_statistic(&mut self) {
+        self.func_gas.clear();
+    }
+}
+
+impl StatisticPrinter for GasUsage {
     fn print_statistic(&self) -> String {
         let mut table = Table::new();
         table.add_row(row!["Function", "Min", "Median", "Max"]);
@@ -106,9 +115,5 @@ impl StatisticConsumer for GasUsage {
             ]);
         }
         format!("{}", table)
-    }
-
-    fn clean_statistic(&mut self) {
-        self.func_gas.clear();
     }
 }
