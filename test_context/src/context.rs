@@ -1,9 +1,6 @@
 use crate::{
-    common::TestAccount,
-    contract_controller::{ContractController, ContractInitializer},
-    print_log,
-    test_token::TokenContractTest,
-    token_info::TokenInfo,
+    common::TestAccount, contract_initializer::ContractInitializer, print_log,
+    test_token::TokenContractTest, token_info::TokenInfo,
 };
 use anyhow::Ok;
 use futures::{
@@ -23,7 +20,8 @@ use workspaces::{
 
 pub struct TestContext<T: Sync + Send, U, const N: usize, const M: usize> {
     pub worker: Worker<Sandbox>,
-    pub contract_controller: Box<dyn ContractController<ContractTemplate = T, DowncastType = U>>,
+    pub template: T,
+    pub holder: U,
     pub token_contracts: [TokenContractTest; N],
     pub accounts: [Account; M],
     pub statistics: Arc<Mutex<Vec<Box<dyn StatisticConsumer>>>>,
@@ -36,12 +34,13 @@ impl<T: Sync + Send, U, const N: usize, const M: usize> TestContext<T, U, N, M> 
         contract_initializer: &(impl ContractInitializer<T, U> + Sync + Send),
         statistics: Vec<Box<dyn StatisticConsumer>>,
     ) -> anyhow::Result<Self> {
-        let (worker, contract_controller, token_contracts, accounts) =
+        let (worker, template, holder, token_contracts, accounts) =
             initialize_context(token_info, test_accounts, contract_initializer).await?;
 
         Ok(Self {
             worker,
-            contract_controller,
+            template,
+            holder,
             token_contracts,
             accounts,
             statistics: Arc::new(Mutex::new(statistics)),
@@ -70,12 +69,7 @@ pub async fn initialize_context<T, U, const N: usize, const M: usize>(
     token_infos: &[TokenInfo; N],
     test_accounts: &[TestAccount; M],
     contract_initializer: &(impl ContractInitializer<T, U> + Sync + Send),
-) -> anyhow::Result<(
-    Worker<Sandbox>,
-    Box<dyn ContractController<ContractTemplate = T, DowncastType = U>>,
-    [TokenContractTest; N],
-    [Account; M],
-)> {
+) -> anyhow::Result<(Worker<Sandbox>, T, U, [TokenContractTest; N], [Account; M])> {
     let worker = workspaces::sandbox().await?;
     let contract_wasm = contract_initializer.get_wasm();
 
@@ -129,20 +123,7 @@ pub async fn initialize_context<T, U, const N: usize, const M: usize>(
         .map(|(role, account, mint_amount)| account.into_result().map(|el| (role, el, mint_amount)))
         .collect::<Result<Vec<(String, Account, TestAccount)>, _>>()?;
 
-    let contract_controller = contract_initializer
-        .initialize_contract_template(
-            contract,
-            HashMap::from_iter(
-                contract_accounts
-                    .iter()
-                    .map(|(role, account, _)| (role.clone(), account.clone())),
-            ),
-        )
-        .await?;
-    print_log!(
-        "Created contract {}",
-        contract_controller.get_contract().as_account().id().blue()
-    );
+    print_log!("Created contract {}", contract.as_account().id().blue());
 
     let token_contracts_and_infos = token_contracts
         .into_iter()
@@ -183,7 +164,7 @@ pub async fn initialize_context<T, U, const N: usize, const M: usize>(
 
     make_storage_deposits_and_mint_tokens(
         &token_contracts_and_infos,
-        contract_controller.get_contract().as_account().id(),
+        contract.as_account().id(),
         &accounts,
         test_accounts,
         contract_accounts
@@ -192,11 +173,7 @@ pub async fn initialize_context<T, U, const N: usize, const M: usize>(
     )
     .await?;
 
-    let account_details = contract_controller
-        .get_contract()
-        .as_account()
-        .view_account()
-        .await?;
+    let account_details = contract.as_account().view_account().await?;
     print_log!(
         "{:.3} {} storage usage after registering {} accounts",
         (account_details.storage_usage as f64 / 100_000.)
@@ -206,9 +183,21 @@ pub async fn initialize_context<T, U, const N: usize, const M: usize>(
         test_accounts.len()
     );
 
+    let (template, holder) = contract_initializer
+        .initialize_contract_template(
+            contract,
+            HashMap::from_iter(
+                contract_accounts
+                    .iter()
+                    .map(|(role, account, _)| (role.clone(), account.clone())),
+            ),
+        )
+        .await?;
+
     Ok((
         worker,
-        contract_controller,
+        template,
+        holder,
         token_contracts_and_infos
             .into_iter()
             .map(|(_, token_contract)| token_contract)

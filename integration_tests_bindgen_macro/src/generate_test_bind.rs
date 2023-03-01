@@ -252,10 +252,12 @@ pub(crate) fn generate_operation(
         #[async_trait::async_trait]
         impl<U, const N: usize, const M: usize> #test_context::test_ops::runnable::Runnable<#impl_name, U, N, M> for #name_camel_case {
             async fn run_impl(&self, context: &#test_context::context::TestContext<#impl_name, U, N, M>)
-            -> anyhow::Result<Option<integration_tests_toolset::statistic::statistic_consumer::Statistic>> {
+            -> anyhow::Result<Option<integration_tests_toolset::statistic::statistic_consumer::Statistic>>
+            where
+                U: std::marker::Send + std::marker::Sync
+            {
                 Ok(Some(context
-                .contract_controller
-                .get_template()
+                .template
                 .#func_name(#func_params)
                 .await?.into()))
             }
