@@ -1,10 +1,13 @@
-use super::statistic_consumer::{Statistic, StatisticConsumer};
+use super::{
+    statistic_consumer::{Statistic, StatisticConsumer},
+    statistic_printer::StatisticPrinter,
+};
 use owo_colors::OwoColorize;
 use prettytable::{row, Table};
 use std::collections::{BinaryHeap, HashMap};
 
 #[derive(Debug)]
-pub struct OpertionStorageUsage {
+pub struct OperationStorageUsage {
     pub heap: BinaryHeap<i64>,
 }
 
@@ -15,8 +18,8 @@ pub struct OperationStorageStatistic {
     pub median: i64,
 }
 
-impl From<&OpertionStorageUsage> for OperationStorageStatistic {
-    fn from(op_storage: &OpertionStorageUsage) -> Self {
+impl From<&OperationStorageUsage> for OperationStorageStatistic {
+    fn from(op_storage: &OperationStorageUsage) -> Self {
         let storage_vec: Vec<i64> = op_storage.heap.clone().into_sorted_vec();
         if storage_vec.is_empty() {
             return Self {
@@ -43,7 +46,7 @@ impl From<&OpertionStorageUsage> for OperationStorageStatistic {
 
 #[derive(Debug)]
 pub struct StorageUsage {
-    pub func_storage: HashMap<String, OpertionStorageUsage>,
+    pub func_storage: HashMap<String, OperationStorageUsage>,
 }
 
 impl StorageUsage {
@@ -80,20 +83,25 @@ impl StoragePrinter for i64 {
 }
 
 // TODO: add gas byte cost to statistic
-
 impl StatisticConsumer for StorageUsage {
-    fn consume_statistic(&mut self, stat: Statistic) {
-        if let Some(storage_usage) = stat.storage_usage {
-            let op_storage =
-                self.func_storage
-                    .entry(stat.func_name)
-                    .or_insert_with(|| OpertionStorageUsage {
-                        heap: BinaryHeap::new(),
-                    });
-            op_storage.heap.push(storage_usage);
+    fn consume_statistic(&mut self, stat: &Statistic) {
+        if let Some(storage_usage) = &stat.storage_usage {
+            let op_storage = self
+                .func_storage
+                .entry(stat.func_name.clone())
+                .or_insert_with(|| OperationStorageUsage {
+                    heap: BinaryHeap::new(),
+                });
+            op_storage.heap.push(*storage_usage);
         }
     }
 
+    fn clean_statistic(&mut self) {
+        self.func_storage.clear();
+    }
+}
+
+impl StatisticPrinter for StorageUsage {
     fn print_statistic(&self) -> String {
         let mut table = Table::new();
         table.add_row(row!["Function", "Min", "Median", "Max"]);
@@ -107,9 +115,5 @@ impl StatisticConsumer for StorageUsage {
             ]);
         }
         format!("{}", table)
-    }
-
-    fn clean_statistic(&mut self) {
-        self.func_storage.clear();
     }
 }
