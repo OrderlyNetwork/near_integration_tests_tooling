@@ -34,3 +34,12 @@ pub struct TestAccount {
     pub account_id: AccountId,
     pub mint_amount: HashMap<String, Balance>,
 }
+
+impl Default for TestAccount {
+    fn default() -> Self {
+        Self {
+            account_id: "account.test.near".parse().unwrap(),
+            mint_amount: HashMap::new(),
+        }
+    }
+}

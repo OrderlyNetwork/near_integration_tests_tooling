@@ -175,12 +175,11 @@ pub async fn initialize_context<T, U, const N: usize, const M: usize>(
 
     let account_details = contract.as_account().view_account().await?;
     print_log!(
-        "{:.3} {} storage usage after registering {} accounts",
+        "{:.3} {} contract storage usage after init",
         (account_details.storage_usage as f64 / 100_000.)
             .bright_magenta()
             .bold(),
-        "NEAR".bright_magenta().bold(),
-        test_accounts.len()
+        "NEAR".bright_magenta().bold()
     );
 
     let (template, holder) = contract_initializer
