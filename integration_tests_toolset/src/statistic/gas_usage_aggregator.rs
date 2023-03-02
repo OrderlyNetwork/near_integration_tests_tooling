@@ -104,16 +104,17 @@ impl StatisticConsumer for GasUsage {
 impl StatisticPrinter for GasUsage {
     fn print_statistic(&self) -> String {
         let mut table = Table::new();
-        table.add_row(row!["Function", "Min", "Median", "Max"]);
+        table.add_row(row!["Function", "Count", "Min", "Median", "Max"]);
         for (func, gas) in self.func_gas.iter() {
             let gas_stat = OperationGasStatistic::from(gas);
             table.add_row(row![
                 func.green().bold(),
+                self.func_gas.len().to_string().blue().bold(),
                 gas_stat.min.print_gas(),
                 gas_stat.median.print_gas(),
                 gas_stat.max.print_gas()
             ]);
         }
-        format!("{}", table)
+        format!("{}\n{}", "Gas usage".bright_yellow().bold(), table)
     }
 }
