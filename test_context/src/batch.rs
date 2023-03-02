@@ -1,22 +1,30 @@
 use futures::{future::try_join_all, try_join, Future, FutureExt, TryFutureExt};
 use integration_tests_toolset::{
-    error::TestError, statistic::statistic_consumer::Statistic, tx_result::TxResult,
+    error::{self, TestError},
+    statistic::statistic_consumer::Statistic,
+    tx_result::TxResult,
 };
 use std::pin::Pin;
 
-type ExecutionFuture<'a> = Pin<Box<dyn Future<Output = Result<Statistic, TestError>> + Send + 'a>>;
-type CallFuture<'a, T> = Pin<Box<dyn Future<Output = Result<TxResult<T>, TestError>> + Send + 'a>>;
+type ExecutionFuture<'a> = Pin<Box<dyn Future<Output = error::Result<Statistic>> + Send + 'a>>;
+type ExecutionFutureUnit<'a> = Pin<Box<dyn Future<Output = error::Result<()>> + Send + 'a>>;
+type CallFuture<'a, T> = Pin<Box<dyn Future<Output = error::Result<TxResult<T>>> + Send + 'a>>;
 
 pub enum ExecutionOperation<'a> {
     SubBatch(Batch<'a>),
-    Future(ExecutionFuture<'a>),
+    ContractOperation(ExecutionFuture<'a>),
+    UnitOperation(ExecutionFutureUnit<'a>),
 }
 
 impl<'a> ExecutionOperation<'a> {
-    pub async fn run(self) -> Result<Vec<Statistic>, TestError> {
+    pub async fn run(self) -> error::Result<Vec<Statistic>> {
         let res = match self {
             ExecutionOperation::SubBatch(block) => block.run().await?,
-            ExecutionOperation::Future(future) => vec![future.await?],
+            ExecutionOperation::ContractOperation(op) => vec![op.await?],
+            ExecutionOperation::UnitOperation(op) => {
+                op.await?;
+                vec![]
+            }
         };
 
         Ok(res)
@@ -38,9 +46,7 @@ impl<'a> Batch<'a> {
 }
 
 impl<'a> Batch<'a> {
-    pub fn run(
-        self,
-    ) -> Pin<Box<dyn Future<Output = Result<Vec<Statistic>, TestError>> + Send + 'a>> {
+    pub fn run(self) -> Pin<Box<dyn Future<Output = error::Result<Vec<Statistic>>> + Send + 'a>> {
         let async_block = move || async {
             let join_result = try_join!(
                 try_join_all(
@@ -98,22 +104,38 @@ impl<'a> From<Batch<'a>> for ExecutionOperation<'a> {
 
 impl<'a> From<ExecutionFuture<'a>> for ExecutionOperation<'a> {
     fn from(value: ExecutionFuture<'a>) -> Self {
-        ExecutionOperation::Future(value)
+        ExecutionOperation::ContractOperation(value)
+    }
+}
+
+impl<'a> From<ExecutionFutureUnit<'a>> for ExecutionOperation<'a> {
+    fn from(value: ExecutionFutureUnit<'a>) -> Self {
+        ExecutionOperation::UnitOperation(value)
     }
 }
 
 impl<'a, T: 'a> From<CallFuture<'a, T>> for ExecutionOperation<'a> {
     fn from(value: CallFuture<'a, T>) -> Self {
         let res = value.map(|res| res.map(|tx| Statistic::from(tx))).boxed();
-        ExecutionOperation::Future(res)
+        ExecutionOperation::ContractOperation(res)
     }
 }
 
 pub fn make_op<'a, T>(
-    input: impl Future<Output = Result<TxResult<T>, TestError>> + Send + 'a,
+    input: impl Future<Output = error::Result<TxResult<T>>> + Send + 'a,
 ) -> ExecutionOperation<'a> {
     input
         .map(|res| res.map(|tx| Statistic::from(tx)))
+        .boxed()
+        .into()
+}
+
+pub fn make_unit_op<'a, T, E: core::fmt::Debug>(
+    input: impl Future<Output = Result<T, E>> + Send + 'a,
+) -> ExecutionOperation<'a> {
+    input
+        .map(|res| res.map(|_| ()))
+        .map_err(|err| TestError::Custom(format!("{:?}", err)))
         .boxed()
         .into()
 }

@@ -104,16 +104,17 @@ impl StatisticConsumer for StorageUsage {
 impl StatisticPrinter for StorageUsage {
     fn print_statistic(&self) -> String {
         let mut table = Table::new();
-        table.add_row(row!["Function", "Min", "Median", "Max"]);
+        table.add_row(row!["Function", "Count", "Min", "Median", "Max"]);
         for (func, storage) in self.func_storage.iter() {
             let storage_stat = OperationStorageStatistic::from(storage);
             table.add_row(row![
                 func.green().bold(),
+                self.func_storage.len().to_string().blue().bold(),
                 storage_stat.min.print_storage(),
                 storage_stat.median.print_storage(),
                 storage_stat.max.print_storage()
             ]);
         }
-        format!("{}", table)
+        format!("{}\n{}", "Storage usage".bright_yellow().bold(), table)
     }
 }
