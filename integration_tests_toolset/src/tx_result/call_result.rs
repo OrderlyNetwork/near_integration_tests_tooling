@@ -11,10 +11,30 @@ pub struct CallResult {
     pub receipt_outcomes: Vec<ExecutionOutcome>,
 }
 
+impl CallResult {
+    pub fn value_from_res_for_promise<T: serde::de::DeserializeOwned>(
+        res: &ExecutionFinalResult,
+    ) -> Result<Option<T>> {
+        let converted_type: Result<Option<T>> = res
+            .clone()
+            .into_result()?
+            .json()
+            .map(|el| Some(el))
+            .map_err(|e| e.into());
+
+        if res.is_success() && converted_type.is_err() {
+            // In case PromiseOrValue contains successfully executed Promise
+            // the deserialization to expected value type would fail. That is why
+            // here None is populated
+            Ok(None)
+        } else {
+            converted_type
+        }
+    }
+}
+
 impl<T> FromRes<T, ExecutionFinalResult> for CallResult
 where
-    // TODO: decide what to do with non-Deserializable types especially PromiseOrValue<U128>
-    // that returns from ft_transfer_call or internal contract calls
     T: serde::de::DeserializeOwned,
 {
     fn from_res(
