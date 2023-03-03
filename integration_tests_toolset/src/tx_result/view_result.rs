@@ -11,7 +11,6 @@ impl<T> FromRes<T, ViewResultDetails> for ViewResult
 where
     T: serde::de::DeserializeOwned,
 {
-    // TODO in case view call will return PromiseOrValue it will be required to add handling here
     fn from_res(
         func_name: String,
         value: T,

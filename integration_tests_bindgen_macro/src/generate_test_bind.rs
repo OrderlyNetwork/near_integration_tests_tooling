@@ -149,18 +149,10 @@ pub(crate) fn generate_function(
     if !params.is_empty() && !params.trailing_punct() {
         params.push_punct(Comma::default());
     }
-    let ty = func_info.output.output.clone();
-
-    let output = if func_info.output.is_promise {
-        parse_quote! {Option<#ty>}
-    } else {
-        ty
-    };
+    let output = func_info.output.clone();
 
     let value = if output == parse_quote! {()} {
         quote! {()}
-    } else if func_info.output.is_promise {
-        quote! {#ret_type::value_from_res_for_promise(&res)?}
     } else {
         quote! {#ret_type::value_from_res(&res)?}
     };

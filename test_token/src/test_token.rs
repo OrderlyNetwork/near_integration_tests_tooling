@@ -108,7 +108,6 @@ impl StorageManagement for TokenContract {
     }
 }
 
-#[integration_tests_bindgen(internal)]
 #[near_bindgen]
 impl FungibleTokenCore for TokenContract {
     #[payable]
@@ -149,6 +148,189 @@ impl FungibleTokenResolver for TokenContract {
                 .internal_ft_resolve_transfer(&sender_id, receiver_id, amount);
         if burned_amount > 0 {}
         used_amount.into()
+    }
+}
+
+// Implementations of next four functions below is needed because currently
+// #[integration_tests_bindgen] macro does not support PromiseOrValue that is returned by ft_transfer_call
+// as it does not support Deserialize trait.
+// Can be removed once it is supported and changed to #[integration_tests_bindgen] macro for impl block above.
+#[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
+impl TokenContractTest {
+    pub async fn ft_transfer(
+        &self,
+        receiver_id: workspaces::AccountId,
+        amount: U128,
+        memo: Option<String>,
+        caller: &workspaces::Account,
+        attached_deposit: u128,
+    ) -> integration_tests_toolset::error::Result<integration_tests_toolset::tx_result::TxResult<()>>
+    {
+        use integration_tests_toolset::pending_tx::call::Call;
+        use integration_tests_toolset::{res_logger::ResLogger, tx_result::FromRes};
+        let args = near_sdk::serde_json::json!({
+          "receiver_id":receiver_id,"amount":amount,"memo":memo
+        })
+        .to_string()
+        .into_bytes();
+        let storage_usage_before = if self.measure_storage_usage {
+            self.contract.view_account().await?.storage_usage
+        } else {
+            0
+        };
+        let res = integration_tests_toolset::pending_tx::payable_tx::PayablePendingTx::new(
+            &self.contract,
+            String::from("ft_transfer"),
+            args,
+            attached_deposit,
+        )
+        .call(caller)
+        .await?;
+        let storage_usage = if self.measure_storage_usage {
+            Some(
+                self.contract.view_account().await?.storage_usage as i64
+                    - storage_usage_before as i64,
+            )
+        } else {
+            None
+        };
+        res.check_res_log_failures()?;
+        integration_tests_toolset::tx_result::CallResult::from_res(
+            "ft_transfer".to_owned(),
+            (),
+            storage_usage,
+            res,
+        )
+    }
+
+    pub async fn ft_transfer_call(
+        &self,
+        receiver_id: workspaces::AccountId,
+        amount: U128,
+        memo: Option<String>,
+        msg: String,
+        caller: &workspaces::Account,
+        attached_deposit: u128,
+    ) -> integration_tests_toolset::error::Result<
+        integration_tests_toolset::tx_result::TxResult<Option<U128>>,
+    > {
+        use integration_tests_toolset::pending_tx::call::Call;
+        use integration_tests_toolset::{res_logger::ResLogger, tx_result::FromRes};
+        let args = near_sdk::serde_json::json!({
+          "receiver_id":receiver_id,"amount":amount,"memo":memo,"msg":msg
+        })
+        .to_string()
+        .into_bytes();
+        let storage_usage_before = if self.measure_storage_usage {
+            self.contract.view_account().await?.storage_usage
+        } else {
+            0
+        };
+        let res = integration_tests_toolset::pending_tx::payable_tx::PayablePendingTx::new(
+            &self.contract,
+            String::from("ft_transfer_call"),
+            args,
+            attached_deposit,
+        )
+        .call(caller)
+        .await?;
+        let storage_usage = if self.measure_storage_usage {
+            Some(
+                self.contract.view_account().await?.storage_usage as i64
+                    - storage_usage_before as i64,
+            )
+        } else {
+            None
+        };
+        res.check_res_log_failures()?;
+
+        // I gave up here. I don't know how to convert ExecutionResult<Value>
+        // to something, that can be recognized as Promise or Value and obtain value from there
+        // Maybe next snippets will help someone to finish this
+        // let real_value = res.clone().into_result()?;
+        // let value = real_value.maybe_to_value();
+
+        integration_tests_toolset::tx_result::CallResult::from_res(
+            "ft_transfer_call".to_owned(),
+            None,
+            storage_usage,
+            res,
+        )
+    }
+    pub async fn ft_total_supply(
+        &self,
+    ) -> integration_tests_toolset::error::Result<
+        integration_tests_toolset::tx_result::TxResult<U128>,
+    > {
+        use integration_tests_toolset::pending_tx::view::View;
+        use integration_tests_toolset::{res_logger::ResLogger, tx_result::FromRes};
+        let args = near_sdk::serde_json::json!({}).to_string().into_bytes();
+        let storage_usage_before = if self.measure_storage_usage {
+            self.contract.view_account().await?.storage_usage
+        } else {
+            0
+        };
+        let res = integration_tests_toolset::pending_tx::immutable_tx::ImmutablePendingTx::new(
+            &self.contract,
+            String::from("ft_total_supply"),
+            args,
+        )
+        .view()
+        .await?;
+        let storage_usage = if self.measure_storage_usage {
+            Some(
+                self.contract.view_account().await?.storage_usage as i64
+                    - storage_usage_before as i64,
+            )
+        } else {
+            None
+        };
+        res.check_res_log_failures()?;
+        integration_tests_toolset::tx_result::view_result::ViewResult::from_res(
+            "ft_total_supply".to_owned(),
+            integration_tests_toolset::tx_result::view_result::ViewResult::value_from_res(&res)?,
+            storage_usage,
+            res,
+        )
+    }
+    pub async fn ft_balance_of(
+        &self,
+        account_id: workspaces::AccountId,
+    ) -> integration_tests_toolset::error::Result<
+        integration_tests_toolset::tx_result::TxResult<U128>,
+    > {
+        use integration_tests_toolset::pending_tx::view::View;
+        use integration_tests_toolset::{res_logger::ResLogger, tx_result::FromRes};
+        let args = near_sdk::serde_json::json!({ "account_id": account_id })
+            .to_string()
+            .into_bytes();
+        let storage_usage_before = if self.measure_storage_usage {
+            self.contract.view_account().await?.storage_usage
+        } else {
+            0
+        };
+        let res = integration_tests_toolset::pending_tx::immutable_tx::ImmutablePendingTx::new(
+            &self.contract,
+            String::from("ft_balance_of"),
+            args,
+        )
+        .view()
+        .await?;
+        let storage_usage = if self.measure_storage_usage {
+            Some(
+                self.contract.view_account().await?.storage_usage as i64
+                    - storage_usage_before as i64,
+            )
+        } else {
+            None
+        };
+        res.check_res_log_failures()?;
+        integration_tests_toolset::tx_result::view_result::ViewResult::from_res(
+            "ft_balance_of".to_owned(),
+            integration_tests_toolset::tx_result::view_result::ViewResult::value_from_res(&res)?,
+            storage_usage,
+            res,
+        )
     }
 }
 

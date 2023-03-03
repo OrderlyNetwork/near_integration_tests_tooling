@@ -1,6 +1,6 @@
 use crate::{
     has_attribute,
-    types::{FunctionInfo, ImplInfo, Mutability, OutputType, Payable, StructInfo},
+    types::{FunctionInfo, ImplInfo, Mutability, Payable, StructInfo},
 };
 use proc_macro2::{Ident, Span};
 use quote::format_ident;
@@ -98,16 +98,14 @@ fn parse_item_method(method: ImplItemMethod) -> Option<FunctionInfo> {
     None
 }
 
-fn get_output(output: &ReturnType, handle_result: bool, is_init: bool) -> OutputType {
+fn get_output(output: &ReturnType, handle_result: bool, is_init: bool) -> Type {
     let mut ret = parse_quote! {()};
-    let mut is_promise = false;
     if !is_init {
         if let ReturnType::Type(_, ty) = output {
             ret = *ty.clone();
             if let Type::Path(tp) = &**ty {
                 if let Some(path) = &tp.path.segments.first() {
-                    is_promise = path.ident == "PromiseOrValue";
-                    if (path.ident == "Result" && handle_result) || is_promise {
+                    if path.ident == "Result" && handle_result {
                         if let PathArguments::AngleBracketed(aba) = &path.arguments {
                             if let Some(syn::GenericArgument::Type(ga_ty)) = aba.args.first() {
                                 ret = ga_ty.clone();
@@ -119,10 +117,7 @@ fn get_output(output: &ReturnType, handle_result: bool, is_init: bool) -> Output
         }
     }
     AccountIdReplace.visit_type_mut(&mut ret);
-    OutputType {
-        output: ret,
-        is_promise,
-    }
+    ret
 }
 
 fn get_params(params_iter: &IntoPairs<FnArg, Comma>) -> Punctuated<FnArg, Comma> {
@@ -161,7 +156,7 @@ impl VisitMut for AccountIdReplace {
         match ty {
             Type::Array(type_arr) => self.visit_type_mut(type_arr.elem.as_mut()),
             Type::Path(type_path) => self.visit_type_path_mut(type_path),
-            Type::Tuple(type_tuple) => type_tuple
+            Type::Tuple(type_typle) => type_typle
                 .elems
                 .iter_mut()
                 .for_each(|el| self.visit_type_mut(el)),

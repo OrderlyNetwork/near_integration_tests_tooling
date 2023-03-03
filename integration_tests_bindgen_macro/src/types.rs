@@ -22,18 +22,12 @@ pub(crate) struct ImplInfo {
 }
 
 #[derive(Debug)]
-pub(crate) struct OutputType {
-    pub output: Type,
-    pub is_promise: bool,
-}
-
-#[derive(Debug)]
 pub(crate) struct FunctionInfo {
     pub function_name: Ident,
     pub params: Punctuated<FnArg, Token![,]>,
     pub params_ident: Vec<Ident>,
     pub mutability: Mutability,
-    pub output: OutputType,
+    pub output: Type,
 }
 
 #[derive(Debug)]
