@@ -1,4 +1,4 @@
-use crate::tx_result::{CallResult, TxResult, TxResultDetails, ViewResult};
+use crate::tx_result::{CallResult, Result, TxResult, TxResultDetails, ViewResult};
 
 pub trait LogParser {
     fn logs(&self) -> Vec<String>;
@@ -8,7 +8,7 @@ pub trait LogParser {
 
     fn assert_event<E>(self, event: E) -> Self
     where
-        E: for<'a> serde::Deserialize<'a> + PartialEq + std::fmt::Debug,
+        E: for<'a> serde::Deserialize<'a> + PartialEq + Eq + std::fmt::Debug,
         Self: Sized,
     {
         self.assert_events(&[event])
@@ -16,36 +16,46 @@ pub trait LogParser {
 
     fn assert_events<E>(self, events: &[E]) -> Self
     where
-        E: for<'a> serde::Deserialize<'a> + PartialEq + std::fmt::Debug,
+        E: for<'a> serde::Deserialize<'a> + PartialEq + Eq + std::fmt::Debug,
         Self: Sized,
     {
-        let log_events = self.events_from_logs::<E>();
-        for event in events {
-            assert!(log_events.contains(event), "Event {:?} not found", event);
-        }
+        self.check_events_in_logs(events).unwrap();
         self
     }
 
-    fn check_event<E>(self, event: E) -> bool
+    fn check_event<E>(&self, event: E) -> Result<()>
     where
-        E: for<'a> serde::Deserialize<'a> + PartialEq + std::fmt::Debug,
+        E: for<'a> serde::Deserialize<'a> + PartialEq + Eq + std::fmt::Debug,
         Self: Sized,
     {
         self.check_events(&[event])
     }
 
-    fn check_events<E>(self, events: &[E]) -> bool
+    fn check_events<E>(&self, events: &[E]) -> Result<()>
     where
-        E: for<'a> serde::Deserialize<'a> + PartialEq + std::fmt::Debug,
+        E: for<'a> serde::Deserialize<'a> + PartialEq + Eq + std::fmt::Debug,
         Self: Sized,
     {
-        let log_events = self.events_from_logs::<E>();
+        self.check_events_in_logs(events)
+    }
+
+    fn check_events_in_logs<E>(&self, events: &[E]) -> Result<()>
+    where
+        E: for<'a> serde::Deserialize<'a> + PartialEq + Eq + std::fmt::Debug,
+        Self: Sized,
+    {
+        let mut log_events = self.events_from_logs::<E>();
         for event in events {
-            if !log_events.contains(event) {
-                return false;
+            if let Some(pos) = log_events.iter().position(|log_event| log_event == event) {
+                log_events.remove(pos);
+            } else {
+                return Err(crate::error::TestError::Custom(format!(
+                    "Event not found: {:?}",
+                    event
+                )));
             }
         }
-        true
+        Ok(())
     }
 }
 
