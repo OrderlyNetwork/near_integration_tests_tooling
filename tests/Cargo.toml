@@ -9,10 +9,13 @@ anyhow = "1.0"
 async-trait = "0.1.63"
 integration_tests_toolset = { path = "../integration_tests_toolset" }
 maplit = "1"
+near-sdk = { version = "4", default-features = false, features = ["unit-testing", "unstable"] }
 near-units = "0.2.0"
+owo-colors = "3"
 serde_json = "1.0"
 test_context = {path = "../test_context"}
 test_contract = { path = "test_contract"}
 tokio = { version = "1.14", features = ["full"] }
+rand = "0.8"
 workspaces = {version = "0.7.0"}
 futures = "0.3"

@@ -109,7 +109,7 @@ impl StatisticPrinter for StorageUsage {
             let storage_stat = OperationStorageStatistic::from(storage);
             table.add_row(row![
                 func.green().bold(),
-                self.func_storage.len().to_string().blue().bold(),
+                storage.heap.len().to_string().blue().bold(),
                 storage_stat.min.print_storage(),
                 storage_stat.median.print_storage(),
                 storage_stat.max.print_storage()

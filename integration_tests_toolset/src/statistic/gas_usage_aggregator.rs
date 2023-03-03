@@ -109,7 +109,7 @@ impl StatisticPrinter for GasUsage {
             let gas_stat = OperationGasStatistic::from(gas);
             table.add_row(row![
                 func.green().bold(),
-                self.func_gas.len().to_string().blue().bold(),
+                gas.heap.len().to_string().blue().bold(),
                 gas_stat.min.print_gas(),
                 gas_stat.median.print_gas(),
                 gas_stat.max.print_gas()
