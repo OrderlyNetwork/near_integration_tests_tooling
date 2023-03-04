@@ -1,4 +1,7 @@
-use integration_tests_toolset::statistic::gas_usage_aggregator::GasUsage;
+use integration_tests_toolset::statistic::{
+    gas_usage_aggregator::GasUsage, statistic_consumer::StatisticConsumer,
+    statistic_printer::StatisticPrinter, storage_usage_aggregator::StorageUsage,
+};
 use near_units::parse_near;
 use test_contract::TestContractTest;
 
@@ -17,8 +20,8 @@ async fn standalone_test_gen_functions() -> anyhow::Result<()> {
         measure_storage_usage: true,
     };
 
-    let mut gas_usage = GasUsage::new();
-    let mut statistic_consumers = [&mut gas_usage];
+    let mut statistic_consumers: [Box<dyn StatisticConsumer>; 2] =
+        [Box::new(GasUsage::new()), Box::new(StorageUsage::new())];
 
     contract_template
         .new(10, &contract_template.contract.as_account(), 1u128)
@@ -149,7 +152,7 @@ async fn standalone_test_gen_functions() -> anyhow::Result<()> {
     let res = res.unwrap_err();
     println!("res: {}", res);
 
-    dbg!(gas_usage);
+    println!("{}", statistic_consumers.print_statistic());
 
     contract_template.view_account_id(user.id().clone()).await?;
 
