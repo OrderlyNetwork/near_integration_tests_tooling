@@ -20,8 +20,10 @@ async fn standalone_test_gen_functions() -> anyhow::Result<()> {
         measure_storage_usage: true,
     };
 
-    let mut statistic_consumers: [Box<dyn StatisticConsumer>; 2] =
-        [Box::new(GasUsage::new()), Box::new(StorageUsage::new())];
+    let mut statistic_consumers: [Box<dyn StatisticConsumer>; 2] = [
+        Box::new(GasUsage::default()),
+        Box::new(StorageUsage::default()),
+    ];
 
     contract_template
         .new(10, &contract_template.contract.as_account(), 1u128)

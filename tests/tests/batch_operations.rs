@@ -6,11 +6,8 @@ use futures::FutureExt;
 use integration_tests_toolset::{
     error::TestError,
     statistic::{
-        call_counter::CallCounter,
-        gas_usage_aggregator::GasUsage,
-        statistic_consumer::{Statistic, StatisticConsumer},
-        statistic_group_ext::StatisticGroupExt,
-        statistic_printer::StatisticPrinter,
+        call_counter::CallCounter, gas_usage_aggregator::GasUsage, statistic_consumer::Statistic,
+        statistic_group_ext::StatisticGroupExt, statistic_group_printer::StatisticGroupPrinter,
         storage_usage_aggregator::StorageUsage,
     },
     tx_result::TxResult,
@@ -124,9 +121,9 @@ async fn test_batch_combination() -> anyhow::Result<()> {
         .run()
         .await?
         .process_statistic([
-            Box::new(GasUsage::new()),
-            Box::new(StorageUsage::new()),
-            Box::new(CallCounter::new()),
+            Box::new(GasUsage::default()),
+            Box::new(StorageUsage::default()),
+            Box::new(CallCounter::default()),
         ]);
 
     println!("{}", stat);
@@ -148,7 +145,7 @@ async fn block_operations_example() -> anyhow::Result<()> {
     )
     .await?;
 
-    let mut statistic_consumer: [Box<dyn StatisticConsumer>; 1] = [Box::new(GasUsage::new())];
+    let mut statistic_consumer: [Box<dyn StatisticConsumer>; 1] = [Box::new(GasUsage::default())];
 
     let future_that_populates_statistic_itself = contract_template
         .call_no_param_ret_u64(&maker_account)
@@ -203,8 +200,11 @@ async fn block_operations_example() -> anyhow::Result<()> {
                 .into(),
         );
 
-    let statistic_consumer = block1.run().await?.populate_statistic(statistic_consumer);
-    println!("{}", statistic_consumer.print_statistic());
+    block1
+        .run()
+        .await?
+        .populate_statistic([Box::new(statistic_consumer)])
+        .print_statistic()?;
 
     Ok(())
 }

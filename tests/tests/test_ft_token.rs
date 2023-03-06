@@ -1,6 +1,5 @@
 mod contract_initializer;
 
-use crate::contract_initializer::Initializer;
 use maplit::hashmap;
 use near_units::parse_near;
 use test_context::{
@@ -8,6 +7,8 @@ use test_context::{
     context::initialize_context,
     token_info::{eth, usdc},
 };
+
+use crate::contract_initializer::Initializer;
 
 #[tokio::test]
 async fn test_ft_transfer_usage() -> anyhow::Result<()> {

@@ -1,4 +1,4 @@
-use super::statistic_printer::StatisticPrinter;
+use super::statistic_processor::StatisticProcessor;
 use crate::tx_result::{TxResult, TxResultDetails};
 
 #[derive(Debug, Clone, Default)]
@@ -18,11 +18,8 @@ impl<T> From<TxResult<T>> for Statistic {
     }
 }
 
-// TODO: add function print_customized_statistic with parameter, that format statistic output
-// TODO: add function write_statistic(filename) - write statistic to file
-// TODO: add function for returning statistics as structure
 /// Every entity which will work with statistics should implement this trait
-pub trait StatisticConsumer: Sync + Send + std::fmt::Debug + StatisticPrinter {
+pub trait StatisticConsumer: Sync + Send + std::fmt::Debug + StatisticProcessor {
     fn consume_statistic(&mut self, stat: &Statistic);
     fn clean_statistic(&mut self);
 }
