@@ -3,7 +3,10 @@ pub mod log_parser;
 pub mod view_result;
 
 pub use self::{call_result::CallResult, view_result::ViewResult};
-use crate::{error::Result, statistic::statistic_consumer::StatisticConsumer};
+use crate::{
+    error::Result,
+    statistic::statistic_consumer::{Statistic, StatisticConsumer},
+};
 
 #[derive(Debug, Clone)]
 pub struct TxResult<T> {
@@ -39,11 +42,28 @@ impl<T> TxResult<T>
 where
     T: Clone,
 {
-    pub fn populate_statistic(self, consumers: &mut [&mut impl StatisticConsumer]) -> Self {
-        consumers.iter_mut().for_each(|con| {
-            let statistic = self.clone().into();
-            con.consume_statistic(&statistic);
-        });
+    pub fn populate_statistic<const N: usize>(
+        self,
+        consumers: &mut [Box<dyn StatisticConsumer>; N],
+    ) -> Self {
+        for consumer in consumers.iter_mut() {
+            consumer.consume_statistic(&&Statistic::from(self.clone()));
+        }
         self
+    }
+
+    #[allow(dead_code)]
+    pub fn process_statistic<const N: usize>(
+        self,
+        mut consumers: [Box<dyn StatisticConsumer>; N],
+    ) -> String {
+        let mut result = String::new();
+
+        for consumer in consumers.iter_mut() {
+            consumer.consume_statistic(&Statistic::from(self.clone()));
+            result.push_str(&consumer.print_statistic());
+        }
+
+        result
     }
 }
