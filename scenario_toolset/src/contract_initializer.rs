@@ -1,8 +1,9 @@
-use crate::common::TestAccount;
 use async_trait::async_trait;
 use integration_tests_toolset::error::TestError;
 use std::collections::HashMap;
 use workspaces::{types::Balance, Account, AccountId, Contract};
+
+use crate::utils::TestAccount;
 
 #[async_trait]
 pub trait ContractInitializer<ContractTemplate, T> {

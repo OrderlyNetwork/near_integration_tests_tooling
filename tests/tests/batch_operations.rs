@@ -18,13 +18,16 @@ use integration_tests_toolset::{
 use maplit::hashmap;
 use operation_examples::{error_operation, numbered_operation, sleep_operation};
 use owo_colors::AnsiColors;
-use std::pin::Pin;
-use test_context::{
+use scenario_toolset::{
     batch::{make_op, make_unit_op, Batch},
-    common::{maker_id, TestAccount},
-    context::initialize_context,
-    token_info::{eth, usdc},
+    context_initialize::initialize_context,
+    utils::{
+        maker_id,
+        token_info::{eth, usdc},
+        TestAccount,
+    },
 };
+use std::pin::Pin;
 use test_contract::TestContractTest;
 use workspaces::AccountId;
 

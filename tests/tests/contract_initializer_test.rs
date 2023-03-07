@@ -3,12 +3,15 @@ mod contract_initializer;
 use crate::contract_initializer::{ContractHolder, Initializer};
 use integration_tests_toolset::error::TestError;
 use near_units::parse_near;
-use std::collections::HashMap;
-use test_context::{
-    common::{account_id, TestAccount},
-    context::initialize_context,
-    token_info::{wnear, TokenInfo},
+use scenario_toolset::{
+    context_initialize::initialize_context,
+    utils::{
+        account_id,
+        token_info::{wnear, TokenInfo},
+        TestAccount,
+    },
 };
+use std::collections::HashMap;
 use test_contract::TestContractTest;
 use workspaces::types::Balance;
 
