@@ -1,6 +1,7 @@
 use super::{
+    mode_printer::ModePrinter,
     statistic_consumer::{Statistic, StatisticConsumer},
-    statistic_printer::StatisticPrinter,
+    statistic_processor::StatisticProcessor,
 };
 use owo_colors::OwoColorize;
 use prettytable::{row, Table};
@@ -47,19 +48,24 @@ impl From<&OperationStorageUsage> for OperationStorageStatistic {
 #[derive(Debug)]
 pub struct StorageUsage {
     pub func_storage: HashMap<String, OperationStorageUsage>,
+    mode_printer: ModePrinter,
 }
 
 impl StorageUsage {
-    pub fn new() -> Self {
+    pub fn new(mode_printer: ModePrinter) -> Self {
         Self {
             func_storage: HashMap::new(),
+            mode_printer,
         }
     }
 }
 
 impl Default for StorageUsage {
     fn default() -> Self {
-        Self::new()
+        Self {
+            func_storage: HashMap::new(),
+            mode_printer: Default::default(),
+        }
     }
 }
 
@@ -101,8 +107,12 @@ impl StatisticConsumer for StorageUsage {
     }
 }
 
-impl StatisticPrinter for StorageUsage {
-    fn print_statistic(&self) -> String {
+impl StatisticProcessor for StorageUsage {
+    fn get_printer_mode(&self) -> &ModePrinter {
+        &self.mode_printer
+    }
+
+    fn make_report(&self) -> String {
         let mut table = Table::new();
         table.add_row(row!["Function", "Count", "Min", "Median", "Max"]);
         for (func, storage) in self.func_storage.iter() {

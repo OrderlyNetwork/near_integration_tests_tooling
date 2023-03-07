@@ -23,7 +23,7 @@ impl StatisticGroupExt for Vec<Statistic> {
             for statistic in self.iter() {
                 consumer.consume_statistic(&statistic);
             }
-            result.push_str(&consumer.print_statistic());
+            result.push_str(&consumer.make_report());
         }
 
         result
@@ -50,7 +50,7 @@ impl StatisticGroupExt for Statistic {
 
         for consumer in consumers.iter_mut() {
             consumer.consume_statistic(&self);
-            result.push_str(&consumer.print_statistic());
+            result.push_str(&consumer.make_report());
         }
 
         result

@@ -1,6 +1,7 @@
 use super::{
+    mode_printer::ModePrinter,
     statistic_consumer::{Statistic, StatisticConsumer},
-    statistic_printer::StatisticPrinter,
+    statistic_processor::StatisticProcessor,
 };
 use crate::tx_result::TxResultDetails;
 use owo_colors::OwoColorize;
@@ -49,19 +50,24 @@ impl From<&OperationGasUsage> for OperationGasStatistic {
 #[derive(Debug)]
 pub struct GasUsage {
     pub func_gas: HashMap<String, OperationGasUsage>,
+    mode_printer: ModePrinter,
 }
 
 impl GasUsage {
-    pub fn new() -> Self {
+    pub fn new(mode_printer: ModePrinter) -> Self {
         Self {
             func_gas: HashMap::new(),
+            mode_printer,
         }
     }
 }
 
 impl Default for GasUsage {
     fn default() -> Self {
-        Self::new()
+        Self {
+            func_gas: HashMap::new(),
+            mode_printer: Default::default(),
+        }
     }
 }
 
@@ -101,8 +107,12 @@ impl StatisticConsumer for GasUsage {
     }
 }
 
-impl StatisticPrinter for GasUsage {
-    fn print_statistic(&self) -> String {
+impl StatisticProcessor for GasUsage {
+    fn get_printer_mode(&self) -> &ModePrinter {
+        &self.mode_printer
+    }
+
+    fn make_report(&self) -> String {
         let mut table = Table::new();
         table.add_row(row!["Function", "Count", "Min", "Median", "Max"]);
         for (func, gas) in self.func_gas.iter() {

@@ -1,6 +1,7 @@
+use super::mode_printer::ModePrinter;
 use crate::statistic::{
     statistic_consumer::{Statistic, StatisticConsumer},
-    statistic_printer::StatisticPrinter,
+    statistic_processor::StatisticProcessor,
 };
 use owo_colors::OwoColorize;
 use prettytable::{row, Table};
@@ -9,19 +10,34 @@ use std::collections::HashMap;
 #[derive(Debug)]
 pub struct CallCounter {
     pub func_count: HashMap<String, u64>,
+    mode_printer: ModePrinter,
 }
 
 impl CallCounter {
     #[allow(dead_code)]
-    pub fn new() -> Self {
+    pub fn new(mode_printer: ModePrinter) -> Self {
         Self {
             func_count: HashMap::new(),
+            mode_printer,
         }
     }
 }
 
-impl StatisticPrinter for CallCounter {
-    fn print_statistic(&self) -> String {
+impl Default for CallCounter {
+    fn default() -> Self {
+        Self {
+            func_count: HashMap::new(),
+            mode_printer: Default::default(),
+        }
+    }
+}
+
+impl StatisticProcessor for CallCounter {
+    fn get_printer_mode(&self) -> &ModePrinter {
+        &self.mode_printer
+    }
+
+    fn make_report(&self) -> String {
         let mut table = Table::new();
         table.add_row(row!["Function", "Count"]);
         for (func_name, count) in self.func_count.iter() {

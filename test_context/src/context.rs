@@ -47,10 +47,10 @@ impl<T: Sync + Send, U, const N: usize, const M: usize> TestContext<T, U, N, M> 
         })
     }
 
-    pub async fn print_statistics(&self) {
+    pub async fn make_report(&self) {
         let statistics = self.statistics.lock().await;
         for statistic in statistics.iter() {
-            println!("{}", statistic.print_statistic());
+            println!("{}", statistic.make_report());
         }
     }
 
