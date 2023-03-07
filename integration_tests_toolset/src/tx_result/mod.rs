@@ -61,7 +61,7 @@ where
 
         for consumer in consumers.iter_mut() {
             consumer.consume_statistic(&Statistic::from(self.clone()));
-            result.push_str(&consumer.print_statistic());
+            result.push_str(&consumer.make_report());
         }
 
         result

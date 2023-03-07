@@ -6,8 +6,11 @@ use futures::FutureExt;
 use integration_tests_toolset::{
     error::TestError,
     statistic::{
-        call_counter::CallCounter, gas_usage_aggregator::GasUsage, statistic_consumer::Statistic,
-        statistic_group_ext::StatisticGroupExt, statistic_group_printer::StatisticGroupPrinter,
+        call_counter::CallCounter,
+        gas_usage_aggregator::GasUsage,
+        statistic_consumer::{Statistic, StatisticConsumer},
+        statistic_group_ext::StatisticGroupExt,
+        statistic_group_printer::StatisticGroupPrinter,
         storage_usage_aggregator::StorageUsage,
     },
     tx_result::TxResult,
@@ -203,7 +206,7 @@ async fn block_operations_example() -> anyhow::Result<()> {
     block1
         .run()
         .await?
-        .populate_statistic([Box::new(statistic_consumer)])
+        .populate_statistic(statistic_consumer)
         .print_statistic()?;
 
     Ok(())
