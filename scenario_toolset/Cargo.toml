@@ -1,11 +1,12 @@
 [package]
-name = "test_context"
+name = "scenario_toolset"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
 integration_tests_bindgen_macro = {path = "../integration_tests_bindgen_macro"}
 integration_tests_toolset = {path = "../integration_tests_toolset"}
+test_token = {path = "../test_token"}
 near-sdk = { version = "4", default-features = false, features = ["unit-testing", "unstable"] }
 near-contract-standards = "4"
 tokio = { version = "1", features = ["full"] }
@@ -16,8 +17,6 @@ owo-colors = "3"
 prettytable-rs = "0.10"
 serde = "1"
 thiserror = "1"
-derivative = "2"
 futures = "0.3"
 near-units = "0.2"
 once_cell = "1"
-derive_builder = "0.12.0"

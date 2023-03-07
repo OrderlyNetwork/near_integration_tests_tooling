@@ -2,10 +2,13 @@ mod contract_initializer;
 
 use maplit::hashmap;
 use near_units::parse_near;
-use test_context::{
-    common::{maker_id, TestAccount},
-    context::initialize_context,
-    token_info::{eth, usdc},
+use scenario_toolset::{
+    context_initialize::initialize_context,
+    utils::{
+        maker_id,
+        token_info::{eth, usdc},
+        TestAccount,
+    },
 };
 
 use crate::contract_initializer::Initializer;

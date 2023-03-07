@@ -49,7 +49,7 @@ impl AsRef<str> for TokenInfo {
 }
 
 static DEFAULT_FT_WASM: Lazy<Vec<u8>> =
-    Lazy::new(|| include_bytes!("../../res/test_token.wasm").to_vec());
+    Lazy::new(|| include_bytes!("../../../res/test_token.wasm").to_vec());
 
 static WNEAR: Lazy<TokenInfo> = Lazy::new(|| TokenInfo {
     account_id: "wnear.test.near".parse().unwrap(),

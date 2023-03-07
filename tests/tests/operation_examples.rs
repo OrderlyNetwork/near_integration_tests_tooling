@@ -5,8 +5,8 @@ use integration_tests_toolset::{
 use near_sdk::json_types::U128;
 use owo_colors::{AnsiColors, OwoColorize};
 use rand::Rng;
-use test_context::test_token::TokenContractTest;
 use test_contract::TestContractTest;
+use test_token::TokenContractTest;
 use workspaces::Account;
 
 async fn _ft_transfer_call_with_storage_measure(

@@ -40,8 +40,3 @@ pub(crate) struct FunctionInfo {
 pub(crate) struct StructInfo {
     pub struct_name: Ident,
 }
-
-#[derive(Default)]
-pub(crate) struct IntegrationTestArguments {
-    pub internal: bool,
-}

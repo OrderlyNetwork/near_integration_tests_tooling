@@ -1,6 +1,24 @@
+pub mod token_info;
+
 use once_cell::sync::Lazy;
 use std::collections::HashMap;
 use workspaces::{types::Balance, AccountId};
+
+#[macro_export]
+macro_rules! print_log {
+    ( $x:expr, $($y:expr),+ ) => {
+        let thread_name = std::thread::current().name().unwrap().to_string();
+        if thread_name == "main" {
+            println!($x, $($y),+);
+        } else {
+            println!(
+                concat!("{}\n    ", $x),
+                thread_name.bold(),
+                $($y),+
+            );
+        }
+    };
+}
 
 pub trait ToNearSdkAcc: ToString {
     fn to_near_sdk(&self) -> near_sdk::AccountId {

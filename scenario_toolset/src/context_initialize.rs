@@ -1,66 +1,23 @@
 use crate::{
-    common::TestAccount, contract_initializer::ContractInitializer, print_log,
-    test_token::TokenContractTest, token_info::TokenInfo,
+    contract_initializer::ContractInitializer,
+    print_log,
+    utils::{token_info::TokenInfo, TestAccount},
 };
 use anyhow::Ok;
 use futures::{
     future::try_join_all, stream::FuturesUnordered, try_join, FutureExt, StreamExt, TryFutureExt,
 };
-use integration_tests_toolset::statistic::statistic_consumer::StatisticConsumer;
 use near_sdk::{json_types::U128, Balance};
 use near_units::parse_near;
 use owo_colors::OwoColorize;
-use std::{collections::HashMap, convert::TryInto, sync::Arc};
-use tokio::{sync::Mutex, task::JoinHandle};
+use std::collections::HashMap;
+use test_token::TokenContractTest;
+use tokio::task::JoinHandle;
 use workspaces::{
     network::Sandbox,
     types::{KeyType, SecretKey},
     Account, AccountId, Contract, Worker,
 };
-
-pub struct TestContext<T: Sync + Send, U, const N: usize, const M: usize> {
-    pub worker: Worker<Sandbox>,
-    pub template: T,
-    pub holder: U,
-    pub token_contracts: [TokenContractTest; N],
-    pub accounts: [Account; M],
-    pub statistics: Arc<Mutex<Vec<Box<dyn StatisticConsumer>>>>,
-}
-
-impl<T: Sync + Send, U, const N: usize, const M: usize> TestContext<T, U, N, M> {
-    pub async fn new(
-        token_info: &[TokenInfo; N],
-        test_accounts: &[TestAccount; M],
-        contract_initializer: &(impl ContractInitializer<T, U> + Sync + Send),
-        statistics: Vec<Box<dyn StatisticConsumer>>,
-    ) -> anyhow::Result<Self> {
-        let (worker, template, holder, token_contracts, accounts) =
-            initialize_context(token_info, test_accounts, contract_initializer).await?;
-
-        Ok(Self {
-            worker,
-            template,
-            holder,
-            token_contracts,
-            accounts,
-            statistics: Arc::new(Mutex::new(statistics)),
-        })
-    }
-
-    pub async fn make_report(&self) {
-        let statistics = self.statistics.lock().await;
-        for statistic in statistics.iter() {
-            println!("{}", statistic.make_report());
-        }
-    }
-
-    pub async fn clean_statistics(&self) {
-        let mut statistics = self.statistics.lock().await;
-        for statistic in statistics.iter_mut() {
-            statistic.clean_statistic();
-        }
-    }
-}
 
 const JOIN_MAX: usize = 500;
 const JOIN_CHUNK: usize = 100;

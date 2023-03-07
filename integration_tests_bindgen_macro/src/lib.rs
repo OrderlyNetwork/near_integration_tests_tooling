@@ -6,7 +6,6 @@ use generate_test_bind::{generate_impl, generate_struct};
 use parse::{parse_func_info, parse_struct_info};
 use proc_macro::{Span, TokenStream};
 use syn::{Attribute, ItemImpl, ItemStruct};
-use types::IntegrationTestArguments;
 
 macro_rules! compile_error {
     ($($tt:tt)*) => {
@@ -16,13 +15,7 @@ macro_rules! compile_error {
 
 #[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
 #[proc_macro_attribute]
-pub fn integration_tests_bindgen(args: TokenStream, input: TokenStream) -> TokenStream {
-    let res = parse_args(args);
-    if let Err(err) = res {
-        compile_error!("{}", err);
-    }
-    let args = res.unwrap();
-
+pub fn integration_tests_bindgen(_args: TokenStream, input: TokenStream) -> TokenStream {
     if let Ok(item) = syn::parse::<ItemStruct>(input.clone()) {
         if is_marked_near_bindgen(&item.attrs) {
             let struct_info = parse_struct_info(item);
@@ -33,7 +26,7 @@ pub fn integration_tests_bindgen(args: TokenStream, input: TokenStream) -> Token
     } else if let Ok(item) = syn::parse::<ItemImpl>(input.clone()) {
         if is_marked_near_bindgen(&item.attrs) {
             let func_info = parse_func_info(item);
-            generate_impl(input.into(), func_info, &args).into()
+            generate_impl(input.into(), func_info).into()
         } else {
             compile_error!("integration_tests_bind_gen can only be used in pair with near_bindgen.")
         }
@@ -42,24 +35,6 @@ pub fn integration_tests_bindgen(args: TokenStream, input: TokenStream) -> Token
             "integration_tests_bind_gen can only be used on type declarations and impl sections."
         )
     }
-}
-
-fn parse_args(args: TokenStream) -> Result<IntegrationTestArguments, String> {
-    let mut res = IntegrationTestArguments::default();
-
-    for arg in args {
-        if let proc_macro::TokenTree::Ident(ident) = arg {
-            if ident.to_string() == "internal" {
-                res.internal = true;
-            } else {
-                return Err(format!("Unknown identifier: {}", ident.to_string()));
-            }
-        } else {
-            return Err(format!("Unknown argument: {}", arg.to_string()));
-        }
-    }
-
-    Ok(res)
 }
 
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]

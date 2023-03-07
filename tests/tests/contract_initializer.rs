@@ -1,10 +1,11 @@
 use async_trait::async_trait;
 use integration_tests_toolset::error::TestError;
 use maplit::hashmap;
-use std::collections::HashMap;
-use test_context::{
-    common::TestAccount, contract_initializer::ContractInitializer, token_info::eth,
+use scenario_toolset::{
+    contract_initializer::ContractInitializer,
+    utils::{token_info::eth, TestAccount},
 };
+use std::collections::HashMap;
 use test_contract::TestContractTest;
 use workspaces::AccountId;
 
