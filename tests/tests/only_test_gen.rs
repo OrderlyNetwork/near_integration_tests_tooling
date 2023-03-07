@@ -1,6 +1,6 @@
 use integration_tests_toolset::statistic::{
     gas_usage_aggregator::GasUsage, statistic_consumer::StatisticConsumer,
-    statistic_printer::StatisticPrinter, storage_usage_aggregator::StorageUsage,
+    statistic_group_printer::StatisticGroupPrinter, storage_usage_aggregator::StorageUsage,
 };
 use near_units::parse_near;
 use test_contract::TestContractTest;
@@ -154,7 +154,7 @@ async fn standalone_test_gen_functions() -> anyhow::Result<()> {
     let res = res.unwrap_err();
     println!("res: {}", res);
 
-    println!("{}", statistic_consumers.print_statistic());
+    statistic_consumers.print_statistic()?;
 
     contract_template.view_account_id(user.id().clone()).await?;
 
