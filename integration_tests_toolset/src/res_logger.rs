@@ -1,5 +1,5 @@
 use crate::error::Result;
-use owo_colors::OwoColorize;
+pub use owo_colors::OwoColorize;
 use workspaces::result::{ExecutionFinalResult, ViewResultDetails};
 
 pub trait ResLogger<R> {
@@ -12,6 +12,7 @@ impl ResLogger<ViewResultDetails> for ViewResultDetails {
     }
 }
 
+#[macro_export]
 macro_rules! print_log {
     ( $x:expr, $($y:expr),+ ) => {
         let thread_name = std::thread::current().name().unwrap().to_string();
