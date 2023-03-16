@@ -13,6 +13,7 @@ use syn::{
     PathSegment, ReturnType, Type, TypePath, Visibility,
 };
 
+// Used to get the name of the contract struct
 pub(crate) fn parse_struct_info(ast: ItemStruct) -> StructInfo {
     StructInfo {
         struct_name: ast.ident,
@@ -23,7 +24,9 @@ pub(crate) fn parse_struct_info(ast: ItemStruct) -> StructInfo {
 // near_contract_standards::impl_fungible_token_core!(Contract, token);
 // Note: it unwraps in several #[near_bindgen] impls
 
+// Used to parse the required info from the function contract signature
 pub(crate) fn parse_func_info(ast: ItemImpl) -> ImplInfo {
+    // extracting Impl block name
     let impl_ident = match *ast.self_ty.clone() {
         syn::Type::Path(path) => path
             .path
@@ -35,8 +38,10 @@ pub(crate) fn parse_func_info(ast: ItemImpl) -> ImplInfo {
     };
     let mut func_infos: Vec<FunctionInfo> = vec![];
 
+    // Extracting function info for every particular function in the impl block
     for item in ast.items {
         if let ImplItem::Method(method) = item {
+            // parse only public functions or defined in trait impl block because they also are public
             if matches!(&method.vis, Visibility::Public(_)) || ast.trait_.is_some() {
                 parse_item_method(method)
                     .into_iter()
@@ -47,13 +52,15 @@ pub(crate) fn parse_func_info(ast: ItemImpl) -> ImplInfo {
 
     ImplInfo {
         struct_name: impl_ident.to_string(),
-        impl_name: format_ident!("{}Test", impl_ident),
+        impl_name: format_ident!("{}Test", impl_ident), // the name of the impl block would be extended with Test
         func_infos,
     }
 }
 
+// Parse the smart-contract method signature to extract relevant info into the FunctionInfo
 fn parse_item_method(method: ImplItemMethod) -> Option<FunctionInfo> {
     let mut params_iter = method.sig.inputs.into_pairs();
+    // check wether method has marked with the init attribute
     let is_init = has_attribute(&method.attrs, "init");
 
     // TODO: refactor code below, extract repeated code (they are not identical!)
@@ -74,6 +81,7 @@ fn parse_item_method(method: ImplItemMethod) -> Option<FunctionInfo> {
             ),
         });
     } else if let Some(first_arg) = params_iter.next() {
+        // check if the first argument is self
         if let FnArg::Receiver(self_value) = first_arg.value() {
             return Some(FunctionInfo {
                 function_name: method.sig.ident,
@@ -98,6 +106,7 @@ fn parse_item_method(method: ImplItemMethod) -> Option<FunctionInfo> {
     None
 }
 
+// Parse the output type for the generated function
 fn get_output(output: &ReturnType, handle_result: bool, is_init: bool) -> OutputType {
     let mut ret = parse_quote! {()};
     let mut is_promise = false;
@@ -125,6 +134,7 @@ fn get_output(output: &ReturnType, handle_result: bool, is_init: bool) -> Output
     }
 }
 
+// Transform IntoPairs to the Punctuated which then should be used for the generation
 fn get_params(params_iter: &IntoPairs<FnArg, Comma>) -> Punctuated<FnArg, Comma> {
     Punctuated::from_iter(
         params_iter
@@ -140,6 +150,7 @@ fn get_params(params_iter: &IntoPairs<FnArg, Comma>) -> Punctuated<FnArg, Comma>
     )
 }
 
+// Get ident(the name) from the parameter list
 fn get_idents(params_iter: &IntoPairs<FnArg, Comma>) -> Vec<Ident> {
     params_iter
         .clone()
@@ -156,7 +167,10 @@ fn get_idents(params_iter: &IntoPairs<FnArg, Comma>) -> Vec<Ident> {
 
 struct AccountIdReplace;
 
+// This visitor implementation is used to substitute near_sdk::AccountId to workspaces::AccountId in parameters or return type
+// This implementation works recursively even for such complicated structures as Vector<Vector<Option<AccountId>>>
 impl VisitMut for AccountIdReplace {
+    // visitor function for the type(which is the entry point)
     fn visit_type_mut(&mut self, ty: &mut Type) {
         match ty {
             Type::Array(type_arr) => self.visit_type_mut(type_arr.elem.as_mut()),
@@ -170,6 +184,7 @@ impl VisitMut for AccountIdReplace {
         }
     }
 
+    // visitor for the TypePath(which could be the end point)
     fn visit_type_path_mut(&mut self, ty: &mut TypePath) {
         if ty.path.is_ident("AccountId") {
             *ty = parse_quote!(workspaces::AccountId);
@@ -178,6 +193,7 @@ impl VisitMut for AccountIdReplace {
         }
     }
 
+    // visitor for path segment(which is basically a generic type like Vec<>, Option<> and could be nested like Vec<Vec<>>)
     fn visit_path_segment_mut(&mut self, path_segment: &mut PathSegment) {
         if path_segment.ident.to_string().contains("Vec")
             || path_segment.ident.to_string().contains("Option")

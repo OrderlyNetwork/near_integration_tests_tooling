@@ -13,6 +13,13 @@ macro_rules! compile_error {
     }
 }
 
+/// The attribute macro which should be used for generating integration tests binding
+/// Should be used for the definition of the contract struct and all impl blocks which API should be added.
+/// Also works for the trait impl of the contract struct
+///
+/// Note: in case of the near_sdk::AccountId usage in the function of the contract class it will be substituted with the workspaces::AccountId
+/// also the PromiseOrValue<T> struct will be changed to Option<T> returning Some if the Value was returned.
+/// Should be used only in non-wasm targets otherwise nothing will be generated.
 #[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
 #[proc_macro_attribute]
 pub fn integration_tests_bindgen(_args: TokenStream, input: TokenStream) -> TokenStream {
@@ -37,6 +44,7 @@ pub fn integration_tests_bindgen(_args: TokenStream, input: TokenStream) -> Toke
     }
 }
 
+#[doc(hidden)]
 #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
 #[proc_macro_attribute]
 pub fn integration_tests_bindgen(_args: TokenStream, input: TokenStream) -> TokenStream {
@@ -47,6 +55,7 @@ fn is_marked_near_bindgen(attrs: &[Attribute]) -> bool {
     has_attribute(attrs, "near_bindgen")
 }
 
+// This function is checking whether the attrs list contains an attribute with the ident specified in name
 pub(crate) fn has_attribute(attrs: &[Attribute], name: &str) -> bool {
     attrs
         .iter()
