@@ -113,16 +113,32 @@ impl StatisticProcessor for GasUsage {
     }
 
     fn make_report(&self) -> String {
+        let mut gas_stat_vec: Vec<_> = self
+            .func_gas
+            .iter()
+            .map(|(func, gas)| {
+                let gas_stat = OperationGasStatistic::from(gas);
+                (
+                    func,
+                    gas.heap.len(),
+                    gas_stat.min,
+                    gas_stat.median,
+                    gas_stat.max,
+                )
+            })
+            .collect();
+
+        gas_stat_vec.sort_by(|a, b| b.3.cmp(&a.3));
+
         let mut table = Table::new();
         table.add_row(row!["Function", "Count", "Min", "Median", "Max"]);
-        for (func, gas) in self.func_gas.iter() {
-            let gas_stat = OperationGasStatistic::from(gas);
+        for (func, count, min, median, max) in gas_stat_vec.iter() {
             table.add_row(row![
                 func.green().bold(),
-                gas.heap.len().to_string().blue().bold(),
-                gas_stat.min.print_gas(),
-                gas_stat.median.print_gas(),
-                gas_stat.max.print_gas()
+                count.to_string().blue().bold(),
+                min.print_gas(),
+                median.print_gas(),
+                max.print_gas()
             ]);
         }
         format!("{}\n{}", "Gas usage".bright_yellow().bold(), table)
