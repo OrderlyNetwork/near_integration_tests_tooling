@@ -63,8 +63,12 @@ fn json_serialize(func_info: &FunctionInfo) -> TokenStream {
         })
         .unwrap_or_default(); // handle the case when their is no args
 
+    let func_name = func_info.function_name.to_string();
+
     quote! {
-      let args = near_sdk::serde_json::json!({#args}).to_string().into_bytes();
+        let serialized_args = near_sdk::serde_json::json!({#args}).to_string();
+        print_log!("Called {}, params: {}", #func_name.green().bold(), serialized_args.cyan());
+        let args = serialized_args.into_bytes();
     }
 }
 
@@ -142,7 +146,8 @@ pub(crate) fn generate_function(
 
     quote! {
         pub async fn #name(&self, #params #additional_params) -> integration_tests_toolset::error::Result<integration_tests_toolset::tx_result::TxResult<#output>> {
-            use integration_tests_toolset::{tx_result::FromRes, res_logger::ResLogger};
+            use integration_tests_toolset::{tx_result::FromRes, res_logger::ResLogger, print_log};
+            use integration_tests_toolset::res_logger::OwoColorize;
             #use_tx_trait
             #serialize_args
             #tx_call
