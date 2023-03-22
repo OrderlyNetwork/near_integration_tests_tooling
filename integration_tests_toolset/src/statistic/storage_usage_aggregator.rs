@@ -113,16 +113,32 @@ impl StatisticProcessor for StorageUsage {
     }
 
     fn make_report(&self) -> String {
+        let mut storage_stat_vec: Vec<_> = self
+            .func_storage
+            .iter()
+            .map(|(func, storage)| {
+                let storage_stat = OperationStorageStatistic::from(storage);
+                (
+                    func,
+                    storage.heap.len(),
+                    storage_stat.min,
+                    storage_stat.median,
+                    storage_stat.max,
+                )
+            })
+            .collect();
+
+        storage_stat_vec.sort_by(|a, b| b.3.cmp(&a.3));
+
         let mut table = Table::new();
         table.add_row(row!["Function", "Count", "Min", "Median", "Max"]);
-        for (func, storage) in self.func_storage.iter() {
-            let storage_stat = OperationStorageStatistic::from(storage);
+        for (func, count, min, median, max) in storage_stat_vec.iter() {
             table.add_row(row![
                 func.green().bold(),
-                storage.heap.len().to_string().blue().bold(),
-                storage_stat.min.print_storage(),
-                storage_stat.median.print_storage(),
-                storage_stat.max.print_storage()
+                count.to_string().blue().bold(),
+                min.print_storage(),
+                median.print_storage(),
+                max.print_storage()
             ]);
         }
         format!("{}\n{}", "Storage usage".bright_yellow().bold(), table)

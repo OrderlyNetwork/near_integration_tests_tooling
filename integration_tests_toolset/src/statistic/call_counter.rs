@@ -38,9 +38,13 @@ impl StatisticProcessor for CallCounter {
     }
 
     fn make_report(&self) -> String {
+        let mut count_stat_vec: Vec<_> = self.func_count.iter().collect();
+
+        count_stat_vec.sort_by(|a, b| b.1.cmp(&a.1));
+
         let mut table = Table::new();
         table.add_row(row!["Function", "Count"]);
-        for (func_name, count) in self.func_count.iter() {
+        for (func_name, count) in count_stat_vec.iter() {
             table.add_row(row![func_name.green().bold(), count.blue()]);
         }
         format!("{}\n{}", "Number of calls".bright_yellow().bold(), table)
