@@ -38,6 +38,8 @@ impl fmt::Debug for TokenContract {
     }
 }
 
+/// This is test implementation of the core fungible token logic.
+/// It also generate test contract for integration tests.
 #[integration_tests_bindgen]
 #[near_bindgen]
 impl TokenContract {

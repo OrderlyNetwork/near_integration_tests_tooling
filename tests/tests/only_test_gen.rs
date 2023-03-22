@@ -5,6 +5,10 @@ use integration_tests_toolset::statistic::{
 use near_units::parse_near;
 use test_contract::TestContractTest;
 
+/// Test of bindgen macro generated functions
+/// This is mostly for internal testing of macro generated functions
+/// However it shows that standalone usage of macro generated functions
+/// can use statistic consumers and obtain statistic
 #[tokio::test]
 async fn standalone_test_gen_functions() -> anyhow::Result<()> {
     let worker = workspaces::sandbox().await?;
@@ -40,6 +44,8 @@ async fn standalone_test_gen_functions() -> anyhow::Result<()> {
 
     assert!(res.is_err());
 
+    // populate_statistic returns TxResult, so it can be used in chain with
+    // obtaining resulting call value
     assert_eq!(
         contract_template
             .view_param_account_id_ret_account_id(user.id().clone())

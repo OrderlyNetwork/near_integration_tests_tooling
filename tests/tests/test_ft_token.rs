@@ -13,8 +13,10 @@ use scenario_toolset::{
 
 use crate::contract_initializer::Initializer;
 
+// Test for fungible token test contract
 #[tokio::test]
 async fn test_ft_transfer_usage() -> anyhow::Result<()> {
+    // Initialize context with contract template and two tokens; Mint tokens for maker account
     let (_, contract_template, contract_holder, [eth, _usdc], [maker_account]) =
         initialize_context(
             &[eth(), usdc()],
@@ -28,8 +30,10 @@ async fn test_ft_transfer_usage() -> anyhow::Result<()> {
         )
         .await?;
 
+    // This is how contract's role accounts can be obtained from contract_holder
     let _owner = &contract_holder.owner;
 
+    // Create storage deposit for contract template in eth token
     eth.storage_deposit(
         None,
         None,
@@ -41,6 +45,7 @@ async fn test_ft_transfer_usage() -> anyhow::Result<()> {
     eth.storage_deposit(None, None, eth.contract.as_account(), parse_near!("1N"))
         .await?;
 
+    // Mint tokens
     eth.mint(
         eth.contract.id().clone(),
         10.into(),
@@ -49,6 +54,7 @@ async fn test_ft_transfer_usage() -> anyhow::Result<()> {
     )
     .await?;
 
+    // Transfer tokens to contract template
     eth.ft_transfer(
         contract_template.contract.id().clone(),
         10.into(),
@@ -58,6 +64,7 @@ async fn test_ft_transfer_usage() -> anyhow::Result<()> {
     )
     .await?;
 
+    // Check balance of contract template
     assert_eq!(
         eth.ft_balance_of(contract_template.contract.id().clone())
             .await?
@@ -66,6 +73,7 @@ async fn test_ft_transfer_usage() -> anyhow::Result<()> {
         10
     );
 
+    // Check ft_transfer_call method
     eth.ft_transfer_call(
         contract_template.contract.id().clone(),
         10.into(),
@@ -76,6 +84,7 @@ async fn test_ft_transfer_usage() -> anyhow::Result<()> {
     )
     .await?;
 
+    // Check that tokens were transferred to contract template
     assert_eq!(
         eth.ft_balance_of(contract_template.contract.id().clone())
             .await?

@@ -31,6 +31,8 @@ use std::pin::Pin;
 use test_contract::TestContractTest;
 use workspaces::AccountId;
 
+/// Example of minimum batch usage
+/// Initialize context and run batch with one operation
 #[tokio::test]
 async fn test_minimal_batch() -> anyhow::Result<()> {
     let (_, contract_template, _, _, _) = initialize_context(&[], &[], &Initializer {}).await?;
@@ -42,6 +44,7 @@ async fn test_minimal_batch() -> anyhow::Result<()> {
     Ok(())
 }
 
+/// Example of butch usage with custom operation that panics
 #[tokio::test]
 #[should_panic = "This operation always fails"]
 async fn test_chain_catch_error() {
@@ -54,6 +57,7 @@ async fn test_chain_catch_error() {
         .unwrap();
 }
 
+/// Example of butch usage with contract operation that panics
 #[tokio::test]
 #[should_panic = "View function rised error!"]
 async fn test_concurrent_catch_error() {
@@ -69,6 +73,7 @@ async fn test_concurrent_catch_error() {
         .unwrap();
 }
 
+/// Example of mixed sequential and concurrent operations
 #[tokio::test]
 async fn test_chain_execution() -> anyhow::Result<()> {
     initialize_context(&[], &[], &Initializer {}).await.unwrap();
@@ -90,8 +95,8 @@ async fn test_chain_execution() -> anyhow::Result<()> {
     Ok(())
 }
 
+/// Example of different contract operations in batch with statistic processing
 #[tokio::test]
-
 async fn test_batch_combination() -> anyhow::Result<()> {
     let accounts = [TestAccount {
         account_id: maker_id(),
@@ -137,6 +142,7 @@ async fn test_batch_combination() -> anyhow::Result<()> {
     Ok(())
 }
 
+/// Example of differen kinds of batch operations with statistic processing and printing
 #[tokio::test]
 async fn block_operations_example() -> anyhow::Result<()> {
     let (_, contract_template, _, [_eth, _usdc], [maker_account]) = initialize_context(
@@ -151,8 +157,11 @@ async fn block_operations_example() -> anyhow::Result<()> {
     )
     .await?;
 
+    // Create statistic consumers separately to be able to use them in different futures
     let mut statistic_consumer: [Box<dyn StatisticConsumer>; 1] = [Box::new(GasUsage::default())];
 
+    // This operation populate statistic to statistic_consumer itself
+    // It can be used to inject statistic for custom operations
     let future_that_populates_statistic_itself = contract_template
         .call_no_param_ret_u64(&maker_account)
         .map(|res| {
@@ -162,6 +171,7 @@ async fn block_operations_example() -> anyhow::Result<()> {
             })
         });
 
+    // Example of custom operation with params, that calls contract function
     fn future_with_params<'a>(
         template: &'a TestContractTest,
         maker_account_id: AccountId,
@@ -175,6 +185,7 @@ async fn block_operations_example() -> anyhow::Result<()> {
         template.view_account_id(maker_account_id).boxed()
     }
 
+    // Example of future created from closure
     let future_from_closure = || {
         contract_template
             .call_no_param_ret_u64(&maker_account)
@@ -182,11 +193,13 @@ async fn block_operations_example() -> anyhow::Result<()> {
             .boxed()
     };
 
+    // Example of immediate future created from contract function
     let future_from_contract_template_function = contract_template
         .view_account_id(maker_account.id().clone())
         .boxed()
         .into();
 
+    // Create batch with different kinds of operations
     let block1 = Batch::new()
         .add_concurrent_ops(vec![
             make_unit_op(future_that_populates_statistic_itself),

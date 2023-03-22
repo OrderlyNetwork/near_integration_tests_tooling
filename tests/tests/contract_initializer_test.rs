@@ -15,6 +15,7 @@ use std::collections::HashMap;
 use test_contract::TestContractTest;
 use workspaces::types::Balance;
 
+/// Minimal example of contract initializer usage
 #[tokio::test]
 async fn test_initializer_usage() -> anyhow::Result<()> {
     let (_, contract_template, _, _, _) = initialize_context(&[], &[], &Initializer {}).await?;
@@ -25,6 +26,8 @@ async fn test_initializer_usage() -> anyhow::Result<()> {
     Ok(())
 }
 
+/// Example of massive context initialization
+/// This test initialize 10 tokens and 10 accounts with minting each token to each account
 #[tokio::test]
 async fn test_massive_init() -> anyhow::Result<()> {
     let tokens = (0..10)
