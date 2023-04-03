@@ -10,6 +10,9 @@ pub struct TestContract {
     state: u64,
 }
 
+/// Test contract for checking test bindgen macro and scenario toolset.
+/// Generate test contract for integration tests.
+/// Contract contains different types of methods and parameters.
 #[integration_tests_bindgen]
 #[near_bindgen]
 impl TestContract {
@@ -111,6 +114,7 @@ impl TestContract {
         Ok(self.state)
     }
 
+    /// Unconditionally panics.
     #[handle_result]
     pub fn call_no_param_ret_error_handle_res(&mut self) -> Result<(), &'static str> {
         Err("Call function rised error!")

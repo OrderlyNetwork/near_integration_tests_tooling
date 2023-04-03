@@ -3,6 +3,7 @@ use once_cell::sync::Lazy;
 use std::fmt::{self, Display, Formatter};
 use workspaces::{types::Balance, AccountId};
 
+/// Token description for initialization fungible token contract
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct TokenInfo {
     pub account_id: AccountId,
@@ -48,6 +49,7 @@ impl AsRef<str> for TokenInfo {
     }
 }
 
+/// Default fungible token test contract
 static DEFAULT_FT_WASM: Lazy<Vec<u8>> =
     Lazy::new(|| include_bytes!("../../../res/test_token.wasm").to_vec());
 
@@ -60,6 +62,7 @@ static WNEAR: Lazy<TokenInfo> = Lazy::new(|| TokenInfo {
     wasm_file: DEFAULT_FT_WASM.clone(),
 });
 
+/// Wrapped Near token info
 pub fn wnear() -> TokenInfo {
     WNEAR.clone()
 }
@@ -73,6 +76,7 @@ static USDC: Lazy<TokenInfo> = Lazy::new(|| TokenInfo {
     wasm_file: DEFAULT_FT_WASM.clone(),
 });
 
+/// USD Coin token info
 pub fn usdc() -> TokenInfo {
     USDC.clone()
 }
@@ -86,6 +90,7 @@ static ETHER: Lazy<TokenInfo> = Lazy::new(|| TokenInfo {
     wasm_file: DEFAULT_FT_WASM.clone(),
 });
 
+/// Ether token info
 pub fn eth() -> TokenInfo {
     ETHER.clone()
 }

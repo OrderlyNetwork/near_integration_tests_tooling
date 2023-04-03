@@ -9,6 +9,9 @@ use test_contract::TestContractTest;
 use test_token::TokenContractTest;
 use workspaces::Account;
 
+// In this file we define custom operations that can be used in batch operations
+// Such operations usually can be added to Batch using make_unit_op() function
+// They does not produce statistics
 async fn _ft_transfer_call_with_storage_measure(
     token: &TokenContractTest,
     contract_template: &TestContractTest,
@@ -40,14 +43,17 @@ async fn _ft_transfer_call_with_storage_measure(
     Ok(res)
 }
 
+/// Test operation that returns error unconditionally
 pub async fn error_operation() -> Result<()> {
     Err(TestError::Custom("This operation always fails".to_owned()))
 }
 
+/// Test operation that sleeps for milliseconds
 pub async fn sleep_operation(ms: u64) -> Result<()> {
     Ok(tokio::time::sleep(std::time::Duration::from_millis(ms)).await)
 }
 
+/// Test operation that sleeps for random milliseconds and prints its number
 pub async fn numbered_operation(number: u64, color: AnsiColors) -> Result<()> {
     let sleep_duration = rand::thread_rng().gen_range(1..10);
     tokio::time::sleep(std::time::Duration::from_millis(sleep_duration)).await;
