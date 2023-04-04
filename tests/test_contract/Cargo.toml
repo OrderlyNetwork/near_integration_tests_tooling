@@ -11,8 +11,8 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 near-sdk = { version = "4.0.0" }
 near-contract-standards = "4"
-integration_tests_bindgen_macro = {path = "../../integration_tests_bindgen_macro"}
 integration_tests_toolset = {path = "../../integration_tests_toolset"}
+integration_tests_bindgen_macro = {path = "../../integration_tests_bindgen_macro"}
 
 [target.'cfg(not(all(target_arch = "wasm32", target_os = "unknown")))'.dependencies]
 workspaces = "0.7"

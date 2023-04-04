@@ -57,16 +57,11 @@ fn is_marked_near_bindgen(attrs: &[Attribute]) -> bool {
 
 // This function is checking whether the attrs list contains an attribute with the ident specified in name
 pub(crate) fn has_attribute(attrs: &[Attribute], name: &str) -> bool {
-    attrs
-        .iter()
-        .map(|attr| attr.parse_meta())
-        .any(|res| match res {
-            Ok(meta) => meta
-                .path()
-                .get_ident()
-                .map(|el| el.to_string())
-                .filter(|el| el == name)
-                .is_some(),
-            Err(_) => false,
-        })
+    attrs.iter().map(|attr| attr.meta.clone()).any(|meta| {
+        meta.path()
+            .get_ident()
+            .map(|el| el.to_string())
+            .filter(|el| el == name)
+            .is_some()
+    })
 }

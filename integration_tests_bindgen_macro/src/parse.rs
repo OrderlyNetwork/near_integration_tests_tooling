@@ -9,7 +9,7 @@ use syn::{
     punctuated::{IntoPairs, Punctuated},
     token::Comma,
     visit_mut::VisitMut,
-    FnArg, GenericArgument, ImplItem, ImplItemMethod, ItemImpl, ItemStruct, Pat, PathArguments,
+    FnArg, GenericArgument, ImplItem, ImplItemFn, ItemImpl, ItemStruct, Pat, PathArguments,
     PathSegment, ReturnType, Type, TypePath, Visibility,
 };
 
@@ -40,7 +40,7 @@ pub(crate) fn parse_func_info(ast: ItemImpl) -> ImplInfo {
 
     // Extracting function info for every particular function in the impl block
     for item in ast.items {
-        if let ImplItem::Method(method) = item {
+        if let ImplItem::Fn(method) = item {
             // parse only public functions or defined in trait impl block because they also are public
             if matches!(&method.vis, Visibility::Public(_)) || ast.trait_.is_some() {
                 parse_item_method(method)
@@ -58,10 +58,10 @@ pub(crate) fn parse_func_info(ast: ItemImpl) -> ImplInfo {
 }
 
 // Parse the smart-contract method signature to extract relevant info into the FunctionInfo
-fn parse_item_method(method: ImplItemMethod) -> Option<FunctionInfo> {
+fn parse_item_method(method: ImplItemFn) -> Option<FunctionInfo> {
     let mut params_iter = method.sig.inputs.into_pairs();
     // check wether method has marked with the init attribute
-    let is_init = has_attribute(&method.attrs, "init");
+    let is_init = has_attribute(method.attrs.as_slice(), "init");
 
     // TODO: refactor code below, extract repeated code (they are not identical!)
     if is_init {
@@ -69,14 +69,14 @@ fn parse_item_method(method: ImplItemMethod) -> Option<FunctionInfo> {
             function_name: method.sig.ident,
             params: get_params(&params_iter),
             params_ident: get_idents(&params_iter),
-            mutability: Mutability::Mutable(if has_attribute(&method.attrs, "payable") {
+            mutability: Mutability::Mutable(if has_attribute(method.attrs.as_slice(), "payable") {
                 Payable::Payable
             } else {
                 Payable::NonPayable
             }),
             output: get_output(
                 &method.sig.output,
-                has_attribute(&method.attrs, "handle_result"),
+                has_attribute(method.attrs.as_slice(), "handle_result"),
                 is_init,
             ),
         });
@@ -88,7 +88,7 @@ fn parse_item_method(method: ImplItemMethod) -> Option<FunctionInfo> {
                 params: get_params(&params_iter),
                 params_ident: get_idents(&params_iter),
                 mutability: self_value.mutability.map_or(Mutability::Immutable, |_| {
-                    Mutability::Mutable(if has_attribute(&method.attrs, "payable") {
+                    Mutability::Mutable(if has_attribute(method.attrs.as_slice(), "payable") {
                         Payable::Payable
                     } else {
                         Payable::NonPayable
@@ -96,7 +96,7 @@ fn parse_item_method(method: ImplItemMethod) -> Option<FunctionInfo> {
                 }),
                 output: get_output(
                     &method.sig.output,
-                    has_attribute(&method.attrs, "handle_result"),
+                    has_attribute(method.attrs.as_slice(), "handle_result"),
                     is_init,
                 ),
             });

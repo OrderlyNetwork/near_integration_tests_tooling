@@ -17,20 +17,53 @@ cargo install --version 0.110.0 wasm-opt
 ```shell
 cargo test -- --nocapture
 ```
+
 ## Description of the problem , that this toolset solves
 When you are developing smart contracts, you need to test them. There are two types of tests: unit tests and integration tests. Unit tests are testing your contract functions in isolation, without any other contracts, accounts, tokens, etc. Integration tests are testing your contract functions in combination with other contracts, accounts, tokens, etc. 
 
 Integration tests are more complex, because you need to deploy contracts, create accounts, mint tokens, etc. Usually it is solved by creating test context structure, that will be used to initialize context for your tests.
 
-This framework intnded to avoid writing test context structure in every contract, minimize boilerplate code for integration tests, by generating contract test structure and functions, initialize context for your tests, provide tools for creating test scenarios, catch and print error inside transactions, provide statistic consumers/processors.
+This framework has been intended to avoid writing test context structure in every contract, minimize boilerplate code for integration tests, by generating contract test structure and functions, initialize context for your tests, provide tools for creating test scenarios, catch and print error inside transactions, provide statistic consumers/processors.
 
 There are three parts of this framework:
 - integration_tests_bindgen_macro - procedural macro, that generates contract test structure and functions for integration tests of you contract, that can be used separately from other parts of this framework.
 - initialize_context function from scenario_toolset - function, that aimed to substitute test context structure, simplify and speed up initialization of context for your tests.
 - scenario_toolset - set of tools for creating batch operations scenarios.
 
+## Usage setup
+Currently we plan this set of tools to live in the Orderly Gitlab repo and to be not published to the crates.io.
+So in order to use it in other Orderly smart contract projects it is required to specify the dependency link.
+Currently we decided to use ssh connection with the Gitlab because it is most commonly used by developers.
+
+To use different packages from the current workspace several steps should be done:
+
+- Add your public ssh key to the Gitlab account
+
+- Append the ~/.cargo/config file with the next lines:
+```text
+[net]
+git-fetch-with-cli = true
+```
+
+- Add required dependency to the particular Cargo.toml file
+```toml
+# For the integration_tests_bindgen_macro package
+integration_tests_bindgen_macro = { git = "ssh://git@gitlab.com/orderly-network/near_integration_tests_tooling.git", branch = "Specific_branch" }
+
+# For the integration_tests_toolset package
+integration_tests_toolset = { git = "ssh://git@gitlab.com/orderly-network/near_integration_tests_tooling.git", branch = "Specific_branch" }
+
+# For the scenario_toolset package
+scenario_toolset = { git = "ssh://git@gitlab.com/orderly-network/near_integration_tests_tooling.git", branch = "Specific_branch" }
+
+# For the test_token package
+test_token = { git = "ssh://git@gitlab.com/orderly-network/near_integration_tests_tooling.git", branch = "Specific_branch" }
+```
+
+Basically this is it for the initial setup for your project. Also for the usage examples take a look in sections below.
+
 ## Generating Contract Test structure and functions for integration tests of you contract
-Calling contract functions from integration tests is not trivial, because you need to write some bilerplate code for that. To simplify smart contract function calling, immediately obtain result value from it, obtain transaction logs and statistics, and print them, you can use generated contract test structure and functions.
+Calling contract functions from integration tests is not trivial, because you need to write some boilerplate code for that. To simplify smart contract function calling, immediately obtain result value from it, obtain transaction logs and statistics, and print them, you can use generated contract test structure and functions.
 
 **Note! generating Test structure and functions for your contract is not adding any runtime code and overhead to your contract, it is adding test functions and code, that run only in integration tests.**
 
@@ -99,7 +132,7 @@ Example of usage of generated test structure and functions can be found in the `
 ## Using initialize_context
 Usually you need to initialize context for your contract tests, for example, deploy contract, deploy test fungible tokens contract, create accounts, mint tokens, etc. To simplify this process you can use initialize_context function from scenario_toolset. 
 
-It will create contract, test accounts and tokens, mint tokens to test accounts according to provided TestAccount.mint_amount fields and return initialized ContractTest structure, ContractHolder with contract role accounts, initialized test token contracts, initialized test accounts, with minted tokens. It is creating test accounts, deploy contract and tokens in parralel manner as fast as possible.
+It will create contract, test accounts and tokens, mint tokens to test accounts according to provided TestAccount.mint_amount fields and return initialized ContractTest structure, ContractHolder with contract role accounts, initialized test token contracts, initialized test accounts, with minted tokens. It is creating test accounts, deploy contract and tokens in parallel manner as fast as possible.
 
 To use initialize_context you need to implement ContractInitializer structure for your contract, that will be used to initialize contract and role accounts. 
 Then you can use initialize_context function to initialize context for your contract tests:
@@ -164,7 +197,7 @@ Examples of batch operations usage can be found in the `tests/tests/batch_operat
 4. Test fungible tokens contract used in tests and for usage in target contract tests lives in the `/test_fungible_tokens` folder.
 5. Test contract used in tests with examples of different contract operations, both view and change, lives in the `/tests/test_contract` folder.
 6. Different integration tests for Single contract operations, Batch operations, and statistics processing and printing lives in the `/tests/tests` folder:
-    - only_test_gen.rs - example of standalone usage of test contract operatios, generated by #[integration_tests_bindgen] macro,
+    - only_test_gen.rs - example of standalone usage of test contract operations, generated by #[integration_tests_bindgen] macro,
     - contract_initializer.rs - example of ContractInitializer, required for initialize_context
     - contract_initializer_test.rs - example of initialize_context function usage,
     - batch_operations.rs - Different variants of Batch operations with statistic processing and printing,

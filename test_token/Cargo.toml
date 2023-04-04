@@ -4,13 +4,15 @@ version = "0.1.0"
 edition = "2021"
 
 [lib]
-crate-type = ["cdylib", "rlib"]
+crate-type = ["staticlib", "rlib", "cdylib"]
+name = "test_token"
+path = "src/lib.rs"
 
 [dependencies]
-integration_tests_bindgen_macro = {path = "../integration_tests_bindgen_macro"}
-integration_tests_toolset = {path = "../integration_tests_toolset"}
 near-sdk = { version = "4", default-features = false, features = ["unit-testing", "unstable"] }
 near-contract-standards = "4"
+integration_tests_bindgen_macro = {path = "../integration_tests_bindgen_macro"}
+integration_tests_toolset = {path = "../integration_tests_toolset"}
 
 [target.'cfg(not(all(target_arch = "wasm32", target_os = "unknown")))'.dependencies]
 workspaces = {version = "0.7.0"}
