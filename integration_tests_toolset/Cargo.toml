@@ -3,6 +3,10 @@ name = "integration_tests_toolset"
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+crate-type = ["rlib", "staticlib"]
+name = "integration_tests_toolset"
+path = "src/lib.rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [target.'cfg(not(all(target_arch = "wasm32", target_os = "unknown")))'.dependencies]

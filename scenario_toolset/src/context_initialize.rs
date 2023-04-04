@@ -1,12 +1,12 @@
 use crate::{
     contract_initializer::ContractInitializer,
-    print_log,
     utils::{token_info::TokenInfo, TestAccount},
 };
 use anyhow::Ok;
 use futures::{
     future::try_join_all, stream::FuturesUnordered, try_join, FutureExt, StreamExt, TryFutureExt,
 };
+use integration_tests_toolset::print_log;
 use near_sdk::{json_types::U128, Balance};
 use near_units::parse_near;
 use owo_colors::OwoColorize;

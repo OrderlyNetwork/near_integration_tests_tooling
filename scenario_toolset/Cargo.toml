@@ -3,7 +3,12 @@ name = "scenario_toolset"
 version = "0.1.0"
 edition = "2021"
 
-[dependencies]
+[lib]
+crate-type = ["rlib", "staticlib"]
+name = "scenario_toolset"
+path = "src/lib.rs"
+
+[target.'cfg(not(all(target_arch = "wasm32", target_os = "unknown")))'.dependencies]
 integration_tests_bindgen_macro = {path = "../integration_tests_bindgen_macro"}
 integration_tests_toolset = {path = "../integration_tests_toolset"}
 test_token = {path = "../test_token"}

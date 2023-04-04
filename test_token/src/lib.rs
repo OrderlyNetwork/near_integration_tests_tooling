@@ -1,3 +1,6 @@
+// In case of any changes in this test TokenContract the build.sh script should be used in order to update
+// the related wasm file in the wasm target folder
+
 use std::fmt;
 
 use integration_tests_bindgen_macro::integration_tests_bindgen;
