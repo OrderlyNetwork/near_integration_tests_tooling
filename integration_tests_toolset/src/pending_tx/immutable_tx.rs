@@ -2,10 +2,12 @@ use crate::pending_tx::view::View;
 use async_trait::async_trait;
 use workspaces::{result::ViewResultDetails, Contract};
 
+/// Struct which encapsulates all required arguments to make a view call of the NEAR smart-contract
 #[derive(Debug)]
 pub struct ImmutablePendingTx<'a> {
     contract: &'a Contract,
     function_name: String,
+    // json structured args serialized to bytes
     args: Vec<u8>,
 }
 

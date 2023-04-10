@@ -1,6 +1,9 @@
 use super::statistic_consumer::{Statistic, StatisticConsumer};
 
+/// Interface to consume the statistic group(like: tuple, vector, array, custom struct with multiple statistic fields, etc)
+/// * Note: it should be implemented only for the statistic groups for single statistic use
 pub trait StatisticGroupExt {
+    // Populate statistic for provided consumers and create a general report into the result String
     fn process_statistic<const N: usize>(
         self,
         consumers: [Box<dyn StatisticConsumer>; N],

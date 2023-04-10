@@ -1,12 +1,13 @@
 use super::mode_printer::ModePrinter;
 use crate::statistic::{
     statistic_consumer::{Statistic, StatisticConsumer},
-    statistic_processor::StatisticProcessor,
+    statistic_printer::StatisticPrinter,
 };
 use owo_colors::OwoColorize;
 use prettytable::{row, Table};
 use std::collections::HashMap;
 
+/// Structure to store the statistical data about the number of calls for particular function
 #[derive(Debug)]
 pub struct CallCounter {
     pub func_count: HashMap<String, u64>,
@@ -32,7 +33,7 @@ impl Default for CallCounter {
     }
 }
 
-impl StatisticProcessor for CallCounter {
+impl StatisticPrinter for CallCounter {
     fn get_printer_mode(&self) -> &ModePrinter {
         &self.mode_printer
     }

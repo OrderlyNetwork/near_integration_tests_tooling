@@ -4,6 +4,7 @@ use workspaces::{
     types::Gas,
 };
 
+/// The struct representing the execution result data for the call method on the smart-contract
 #[derive(Debug, Clone)]
 pub struct CallResult {
     pub gas: Gas,
@@ -12,6 +13,7 @@ pub struct CallResult {
 }
 
 impl CallResult {
+    // This method is required to handle the type promise return in mutable(&mut self) methods
     pub fn value_from_res_for_promise<T: serde::de::DeserializeOwned>(
         res: &ExecutionFinalResult,
     ) -> Result<Option<T>> {

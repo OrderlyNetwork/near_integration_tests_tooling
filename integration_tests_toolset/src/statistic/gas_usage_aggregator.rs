@@ -1,7 +1,7 @@
 use super::{
     mode_printer::ModePrinter,
     statistic_consumer::{Statistic, StatisticConsumer},
-    statistic_processor::StatisticProcessor,
+    statistic_printer::StatisticPrinter,
 };
 use crate::tx_result::TxResultDetails;
 use owo_colors::OwoColorize;
@@ -9,11 +9,14 @@ use prettytable::{row, Table};
 use std::collections::{BinaryHeap, HashMap};
 use workspaces::types::Gas;
 
+/// Struct for representing the range of values which shows the gas usage of the particular operation.
+/// It should be used in scenarios with multiple gas measurements for the same operation.
 #[derive(Debug)]
 pub struct OperationGasUsage {
     pub heap: BinaryHeap<Gas>,
 }
 
+/// Struct for representing gas statistical values
 #[derive(Debug)]
 pub struct OperationGasStatistic {
     pub min: Gas,
@@ -47,6 +50,7 @@ impl From<&OperationGasUsage> for OperationGasStatistic {
     }
 }
 
+// Struct which represents gas usage per each function
 #[derive(Debug)]
 pub struct GasUsage {
     pub func_gas: HashMap<String, OperationGasUsage>,
@@ -71,6 +75,7 @@ impl Default for GasUsage {
     }
 }
 
+/// Interface for printing gas usage
 trait GasPrinter {
     fn print_gas(&self) -> String;
 }
@@ -107,7 +112,7 @@ impl StatisticConsumer for GasUsage {
     }
 }
 
-impl StatisticProcessor for GasUsage {
+impl StatisticPrinter for GasUsage {
     fn get_printer_mode(&self) -> &ModePrinter {
         &self.mode_printer
     }

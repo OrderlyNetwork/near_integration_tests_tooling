@@ -2,6 +2,7 @@ use super::{FromRes, TxResult, TxResultDetails};
 use crate::error::Result;
 use workspaces::result::ViewResultDetails;
 
+/// The struct representing the execution result data for the view method on the smart-contract
 #[derive(Debug, Clone)]
 pub struct ViewResult {
     pub logs: Vec<String>,

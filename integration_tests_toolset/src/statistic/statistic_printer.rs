@@ -1,7 +1,9 @@
 use super::mode_printer::ModePrinter;
 use crate::error::TestError;
 
-pub trait StatisticProcessor {
+/// Interface for printing the statistic.
+/// Also it provides possibility to structure stored statistic data with the make_report method
+pub trait StatisticPrinter {
     fn get_printer_mode(&self) -> &ModePrinter;
 
     fn make_report(&self) -> String;

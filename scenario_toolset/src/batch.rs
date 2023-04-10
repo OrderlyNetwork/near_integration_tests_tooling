@@ -41,7 +41,7 @@ impl<'a> ExecutionOperation<'a> {
 /// * Batch can be nested, so you can insert sub batches into batch as operation
 /// * Batch can be executed with `run` method
 ///
-/// You can add operations to batch by one with `add_chain_op` and `add_concurrent_op` methods
+/// You can add operations to batch with `add_chain_op` and `add_concurrent_op` methods
 /// or you can add multiple operations with `add_chain_ops` and `add_concurrent_ops` methods
 ///
 /// * Note: for storage measurement you should use `add_chain_op` method as parallel execution
@@ -50,7 +50,7 @@ impl<'a> ExecutionOperation<'a> {
 /// Run method returns `Vec<Statistic>` with statistic for each operation in batch and sub batches
 ///
 /// Statistics can be processed with `StatisticConsumers` to get specific statistics
-/// for example Gas consumation or contract storage changes
+/// for example Gas consumption or contract storage changes
 pub struct Batch<'a> {
     pub chain: Vec<ExecutionOperation<'a>>,
     pub concurrent: Vec<ExecutionOperation<'a>>,
