@@ -1,6 +1,7 @@
-use super::statistic_processor::StatisticProcessor;
+use super::statistic_printer::StatisticPrinter;
 use crate::tx_result::{TxResult, TxResultDetails};
 
+/// This struct aggregates all required statistic data related to the smart-contract method call
 #[derive(Debug, Clone, Default)]
 pub struct Statistic {
     pub func_name: String,
@@ -18,8 +19,12 @@ impl<T> From<TxResult<T>> for Statistic {
     }
 }
 
-/// Every entity which will work with statistics should implement this trait
-pub trait StatisticConsumer: Sync + Send + std::fmt::Debug + StatisticProcessor {
+/// Trait which should be used for the statistic aggregation
+/// Implementor consumes statistic related to particular smart-contract methods
+/// Every entity which will need to aggregate statistics should implement this trait
+/// * Note: also statistic could be cleaned at any stage of the test scenario
+pub trait StatisticConsumer: Sync + Send + std::fmt::Debug + StatisticPrinter {
+    // Interface method for populating consumer with the statistic
     fn consume_statistic(&mut self, stat: &Statistic);
     fn clean_statistic(&mut self);
 }

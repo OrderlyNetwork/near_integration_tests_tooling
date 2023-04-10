@@ -5,6 +5,10 @@ use std::{
     path::PathBuf,
 };
 
+/// Defines the output destination for printing the statistic
+/// * Console - will print to the Console only
+/// * File - will print to the specified file
+/// * Mixed - will print both to the Console and specified file
 #[derive(Debug)]
 pub enum ModePrinter {
     Console,

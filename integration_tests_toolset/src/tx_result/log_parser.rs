@@ -1,11 +1,16 @@
 use crate::tx_result::{CallResult, Result, TxResult, TxResultDetails, ViewResult};
 
+/// This interface is useful for extracting emitted by the smart contract method events
 pub trait LogParser {
+    /// Extract all emitted events in raw format returning bunch of Strings
     fn logs(&self) -> Vec<String>;
+
+    /// Extract all events of the same type
     fn events_from_logs<E>(&self) -> Vec<E>
     where
         E: for<'a> serde::Deserialize<'a>;
 
+    /// Assert whether the transaction output details contains particular logs
     fn assert_event<E>(self, event: E) -> Self
     where
         E: for<'a> serde::Deserialize<'a> + PartialEq + Eq + std::fmt::Debug,
@@ -14,15 +19,17 @@ pub trait LogParser {
         self.assert_events(&[event])
     }
 
+    /// Assert whether the transaction output details contains a bunch of logs of particular type
     fn assert_events<E>(self, events: &[E]) -> Self
     where
         E: for<'a> serde::Deserialize<'a> + PartialEq + Eq + std::fmt::Debug,
         Self: Sized,
     {
-        self.check_events_in_logs(events).unwrap();
+        self.check_events(events).unwrap();
         self
     }
 
+    /// Check for the particular event in the transaction
     fn check_event<E>(&self, event: E) -> Result<()>
     where
         E: for<'a> serde::Deserialize<'a> + PartialEq + Eq + std::fmt::Debug,
@@ -31,15 +38,8 @@ pub trait LogParser {
         self.check_events(&[event])
     }
 
+    /// Check for the bunch of events in particular transaction
     fn check_events<E>(&self, events: &[E]) -> Result<()>
-    where
-        E: for<'a> serde::Deserialize<'a> + PartialEq + Eq + std::fmt::Debug,
-        Self: Sized,
-    {
-        self.check_events_in_logs(events)
-    }
-
-    fn check_events_in_logs<E>(&self, events: &[E]) -> Result<()>
     where
         E: for<'a> serde::Deserialize<'a> + PartialEq + Eq + std::fmt::Debug,
         Self: Sized,

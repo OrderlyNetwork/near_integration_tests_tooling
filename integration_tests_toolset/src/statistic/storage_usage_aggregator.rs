@@ -1,17 +1,20 @@
 use super::{
     mode_printer::ModePrinter,
     statistic_consumer::{Statistic, StatisticConsumer},
-    statistic_processor::StatisticProcessor,
+    statistic_printer::StatisticPrinter,
 };
 use owo_colors::OwoColorize;
 use prettytable::{row, Table};
 use std::collections::{BinaryHeap, HashMap};
 
+/// Struct for representing the range of values which shows the storage usage of the particular operation.
+/// It should be used in scenarios with multiple storage measurements for the same operation.
 #[derive(Debug)]
 pub struct OperationStorageUsage {
     pub heap: BinaryHeap<i64>,
 }
 
+/// Struct for representing storage statistical values
 #[derive(Debug)]
 pub struct OperationStorageStatistic {
     pub min: i64,
@@ -45,6 +48,7 @@ impl From<&OperationStorageUsage> for OperationStorageStatistic {
     }
 }
 
+/// Struct for representing storage usage per each function
 #[derive(Debug)]
 pub struct StorageUsage {
     pub func_storage: HashMap<String, OperationStorageUsage>,
@@ -69,6 +73,7 @@ impl Default for StorageUsage {
     }
 }
 
+/// Interface for storage usage printing
 trait StoragePrinter {
     fn print_storage(&self) -> String;
 }
@@ -88,7 +93,6 @@ impl StoragePrinter for i64 {
     }
 }
 
-// TODO: add gas byte cost to statistic
 impl StatisticConsumer for StorageUsage {
     fn consume_statistic(&mut self, stat: &Statistic) {
         if let Some(storage_usage) = &stat.storage_usage {
@@ -107,7 +111,7 @@ impl StatisticConsumer for StorageUsage {
     }
 }
 
-impl StatisticProcessor for StorageUsage {
+impl StatisticPrinter for StorageUsage {
     fn get_printer_mode(&self) -> &ModePrinter {
         &self.mode_printer
     }

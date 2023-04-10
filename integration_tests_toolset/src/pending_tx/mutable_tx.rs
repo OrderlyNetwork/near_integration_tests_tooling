@@ -2,10 +2,12 @@ use super::call::Call;
 use async_trait::async_trait;
 use workspaces::{result::ExecutionFinalResult, Account, Contract};
 
+/// Struct which encapsulates all required arguments to make a state-mutable call to the NEAR smart-contract
 #[derive(Debug)]
 pub struct MutablePendingTx<'a> {
     contract: &'a Contract,
     function_name: String,
+    // json structured args serialized to bytes
     args: Vec<u8>,
 }
 

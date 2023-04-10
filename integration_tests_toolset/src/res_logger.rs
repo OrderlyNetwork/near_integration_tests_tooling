@@ -2,16 +2,8 @@ use crate::error::Result;
 pub use owo_colors::OwoColorize;
 use workspaces::result::{ExecutionFinalResult, ViewResultDetails};
 
-pub trait ResLogger<R> {
-    fn check_res_log_failures(&self) -> Result<()>;
-}
-
-impl ResLogger<ViewResultDetails> for ViewResultDetails {
-    fn check_res_log_failures(&self) -> Result<()> {
-        Ok(())
-    }
-}
-
+/// Extended print macros which should be used in the integration tests
+/// It provides the thread name and format the text
 #[macro_export]
 macro_rules! print_log {
     ( $x:expr, $($y:expr),+ ) => {
@@ -26,6 +18,19 @@ macro_rules! print_log {
             );
         }
     };
+}
+
+/// Interface for validating failures in the transaction logs
+/// * Note: it is required because in some cases the transaction result could be successful
+/// but the underlying receipts could be in the failed state
+pub trait ResLogger<R> {
+    fn check_res_log_failures(&self) -> Result<()>;
+}
+
+impl ResLogger<ViewResultDetails> for ViewResultDetails {
+    fn check_res_log_failures(&self) -> Result<()> {
+        Ok(())
+    }
 }
 
 impl ResLogger<ExecutionFinalResult> for ExecutionFinalResult {

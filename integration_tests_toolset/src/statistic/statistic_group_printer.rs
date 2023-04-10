@@ -1,7 +1,7 @@
+use super::statistic_consumer::StatisticConsumer;
 use crate::error::TestError;
 
-use super::statistic_consumer::StatisticConsumer;
-
+/// Interface for printing aggregated statistic from multiple consumers(stored in some group like: array, vector, etc.)
 pub trait StatisticGroupPrinter {
     fn print_statistic(&self) -> Result<(), TestError>;
 }
