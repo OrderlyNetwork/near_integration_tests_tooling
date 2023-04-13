@@ -15,6 +15,7 @@ use near_contract_standards::{
 };
 use near_sdk::{
     borsh::{self, BorshDeserialize, BorshSerialize},
+    env,
     json_types::U128,
     near_bindgen, AccountId, PanicOnDefault, PromiseOrValue,
 };
@@ -47,18 +48,41 @@ impl fmt::Debug for TokenContract {
 #[near_bindgen]
 impl TokenContract {
     #[init]
-    pub fn new(name: String, symbol: String, decimals: u8) -> Self {
-        Self {
+    pub fn new(name: String, symbol: String, decimals: u8, initial_mint: Option<U128>) -> Self {
+        let mut this = Self {
             name,
             symbol,
             decimals,
             token: FungibleToken::new(b"t".to_vec()),
+        };
+
+        let current_id = env::current_account_id();
+
+        this.token.internal_register_account(&current_id);
+
+        let initial_mint = initial_mint.unwrap_or(0.into());
+
+        if initial_mint.0 > 0 {
+            this.token.internal_deposit(&current_id, initial_mint.0);
+            near_contract_standards::fungible_token::events::FtMint {
+                owner_id: &current_id,
+                amount: &initial_mint,
+                memo: Some("Initial tokens supply is minted"),
+            }
+            .emit();
         }
+
+        this
     }
 
     #[payable]
     pub fn mint(&mut self, account_id: AccountId, amount: U128) {
-        self.token.internal_deposit(&account_id, amount.into());
+        if self.token.accounts.contains_key(&account_id) {
+            self.token.internal_deposit(&account_id, amount.0);
+        } else {
+            self.token.internal_register_account(&account_id);
+            self.token.internal_deposit(&account_id, amount.0);
+        }
     }
 
     pub fn burn(&mut self, account_id: AccountId, amount: U128) {
@@ -168,7 +192,8 @@ mod tests {
     fn test_basics() {
         let mut context = VMContextBuilder::new();
         testing_env!(context.build());
-        let mut contract = TokenContract::new("token".to_string(), "TKN".to_string(), 12);
+        let mut contract =
+            TokenContract::new("token".to_string(), "TKN".to_string(), 12, Some(0.into()));
         testing_env!(context
             .attached_deposit(125 * env::storage_byte_cost())
             .build());
