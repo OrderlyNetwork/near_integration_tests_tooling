@@ -3,7 +3,9 @@ use crate::{
     utils::{token_info::TokenInfo, TestAccount},
 };
 use anyhow::Ok;
-use futures::{future::try_join_all, stream::FuturesUnordered, try_join, FutureExt, StreamExt};
+use futures::{
+    future::try_join_all, stream::FuturesUnordered, try_join, FutureExt, StreamExt, TryFutureExt,
+};
 use integration_tests_toolset::print_log;
 use near_sdk::{json_types::U128, Balance};
 use near_units::parse_near;
@@ -301,12 +303,30 @@ async fn make_storage_deposits_and_mint_tokens(
         for (account, TestAccount { mint_amount, .. }) in accounts.iter().zip(test_accounts.iter())
         {
             if let Some(amount) = mint_amount.get(&token_info.account_id.to_string()) {
-                futures.push(mint_tokens(token_contract, account.id(), account, *amount).boxed());
+                futures.push(
+                    make_storage_deposit(
+                        token_contract,
+                        token_info.storage_deposit_amount,
+                        account.id(),
+                        account,
+                    )
+                    .and_then(|_| mint_tokens(token_contract, account.id(), account, *amount))
+                    .boxed(),
+                );
             }
         }
         for (account, TestAccount { mint_amount, .. }) in contract_accounts.clone() {
             if let Some(amount) = mint_amount.get(&token_info.account_id.to_string()) {
-                futures.push(mint_tokens(token_contract, account.id(), account, *amount).boxed());
+                futures.push(
+                    make_storage_deposit(
+                        token_contract,
+                        token_info.storage_deposit_amount,
+                        account.id(),
+                        account,
+                    )
+                    .and_then(|_| mint_tokens(token_contract, account.id(), account, *amount))
+                    .boxed(),
+                );
             }
         }
         futures.push(

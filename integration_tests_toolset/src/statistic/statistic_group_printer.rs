@@ -15,3 +15,13 @@ impl<const N: usize> StatisticGroupPrinter for [Box<dyn StatisticConsumer>; N] {
         Ok(())
     }
 }
+
+impl<const N: usize> StatisticGroupPrinter for [&mut Box<dyn StatisticConsumer>; N] {
+    fn print_statistic(&self) -> Result<(), TestError> {
+        for consumer in self {
+            consumer.print_statistic()?;
+        }
+
+        Ok(())
+    }
+}

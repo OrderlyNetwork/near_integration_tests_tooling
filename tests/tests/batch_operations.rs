@@ -13,7 +13,7 @@ use integration_tests_toolset::{
         statistic_group_printer::StatisticGroupPrinter,
         storage_usage_aggregator::StorageUsage,
     },
-    tx_result::TxResult,
+    tx_result::{IntoMutRefs, TxResult},
 };
 use maplit::hashmap;
 use operation_examples::{error_operation, numbered_operation, sleep_operation};
@@ -142,7 +142,7 @@ async fn test_batch_combination() -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Example of differen kinds of batch operations with statistic processing and printing
+/// Example of different kinds of batch operations with statistic processing and printing
 #[tokio::test]
 async fn block_operations_example() -> anyhow::Result<()> {
     let (_, contract_template, _, [_eth, _usdc], [maker_account]) = initialize_context(
@@ -166,7 +166,7 @@ async fn block_operations_example() -> anyhow::Result<()> {
         .call_no_param_ret_u64(&maker_account)
         .map(|res| {
             res.map(|tx| {
-                tx.populate_statistic(&mut statistic_consumer);
+                tx.populate_statistic(&mut statistic_consumer.into_refs());
                 42
             })
         });

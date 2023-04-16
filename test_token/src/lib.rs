@@ -77,12 +77,7 @@ impl TokenContract {
 
     #[payable]
     pub fn mint(&mut self, account_id: AccountId, amount: U128) {
-        if self.token.accounts.contains_key(&account_id) {
-            self.token.internal_deposit(&account_id, amount.0);
-        } else {
-            self.token.internal_register_account(&account_id);
-            self.token.internal_deposit(&account_id, amount.0);
-        }
+        self.token.internal_deposit(&account_id, amount.into());
     }
 
     pub fn burn(&mut self, account_id: AccountId, amount: U128) {
