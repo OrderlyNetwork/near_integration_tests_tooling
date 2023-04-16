@@ -1,13 +1,25 @@
 use integration_tests_bindgen_macro::integration_tests_bindgen;
 use near_contract_standards::fungible_token::receiver::FungibleTokenReceiver;
 use near_sdk::borsh::{self, BorshDeserialize, BorshSerialize};
+use near_sdk::collections::UnorderedMap;
 use near_sdk::{assert_one_yocto, env, json_types::U128, near_bindgen, AccountId, PromiseOrValue};
+use near_sdk::{Balance, BorshStorageKey, PanicOnDefault};
+
+const NATIVE_TOKEN: &str = "near";
+
+#[derive(Debug, BorshStorageKey, BorshSerialize, PartialEq, Eq)]
+pub enum StorageKey {
+    UserRecordMigrated,
+    UserRecord,
+    UserBalance { user: AccountId },
+}
 
 #[integration_tests_bindgen]
 #[near_bindgen]
-#[derive(Default, BorshDeserialize, BorshSerialize)]
+#[derive(BorshDeserialize, BorshSerialize, PanicOnDefault)]
 pub struct TestContract {
     state: u64,
+    user_records: UnorderedMap<AccountId, UnorderedMap<AccountId, Balance>>,
 }
 
 /// Test contract for checking test bindgen macro and scenario toolset.
@@ -28,6 +40,7 @@ impl TestContract {
 
         Ok(Self {
             state: initial_state,
+            user_records: UnorderedMap::new(StorageKey::UserRecord),
         })
     }
 
@@ -36,11 +49,39 @@ impl TestContract {
         #[derive(BorshDeserialize)]
         struct OldContract {
             _state: u64,
+            _user_records: UnorderedMap<AccountId, UnorderedMap<AccountId, Balance>>,
         }
 
-        let _old_contract: OldContract = env::state_read().expect("Old state doesn't exist");
+        let mut _old_contract: OldContract = env::state_read().expect("Old state doesn't exist");
 
-        Self { state: 0 }
+        _old_contract._user_records.clear();
+
+        Self {
+            state: 0,
+            user_records: UnorderedMap::new(StorageKey::UserRecordMigrated),
+        }
+    }
+
+    #[payable]
+    pub fn deposit_native_token(&mut self) {
+        let amount = env::attached_deposit();
+        let account = env::predecessor_account_id();
+
+        let mut user_balances = self.user_records.get(&account).unwrap_or_else(|| {
+            UnorderedMap::new(StorageKey::UserBalance {
+                user: account.clone(),
+            })
+        });
+
+        let new_balance = user_balances
+            .get(&NATIVE_TOKEN.parse().unwrap())
+            .unwrap_or_default()
+            .checked_add(amount)
+            .unwrap();
+
+        user_balances.insert(&NATIVE_TOKEN.parse().unwrap(), &new_balance);
+
+        self.user_records.insert(&account, &user_balances);
     }
 
     pub fn view_no_param_ret_u64(&self) -> u64 {
@@ -137,6 +178,24 @@ impl FungibleTokenReceiver for TestContract {
         amount: U128,
         msg: String,
     ) -> PromiseOrValue<U128> {
+        let token = env::predecessor_account_id();
+
+        let mut user_balances = self.user_records.get(&sender_id).unwrap_or_else(|| {
+            UnorderedMap::new(StorageKey::UserBalance {
+                user: sender_id.clone(),
+            })
+        });
+
+        let new_balance = user_balances
+            .get(&token)
+            .unwrap_or_default()
+            .checked_add(amount.0)
+            .unwrap();
+
+        user_balances.insert(&token, &new_balance);
+
+        self.user_records.insert(&sender_id, &user_balances);
+
         PromiseOrValue::Value(0.into())
     }
 }
