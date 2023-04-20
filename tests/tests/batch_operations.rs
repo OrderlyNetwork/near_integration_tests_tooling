@@ -16,6 +16,7 @@ use integration_tests_toolset::{
     tx_result::{IntoMutRefs, TxResult},
 };
 use maplit::hashmap;
+use near_units::parse_near;
 use operation_examples::{error_operation, numbered_operation, sleep_operation};
 use owo_colors::AnsiColors;
 use scenario_toolset::{
@@ -223,6 +224,61 @@ async fn block_operations_example() -> anyhow::Result<()> {
         .run()
         .await?
         .populate_statistic(statistic_consumer)
+        .print_statistic()?;
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn token_deposit_batch() -> anyhow::Result<()> {
+    // Initialize context with contract template and eth token
+    let (_, contract_template, _, [eth], [account1, account2]) = initialize_context(
+        &[eth()],
+        &[
+            TestAccount {
+                account_id: "account1.test.near".parse().unwrap(),
+                mint_amount: hashmap! {
+                    eth().to_string() => eth().parse("15")?
+                },
+            },
+            TestAccount {
+                account_id: "account2.test.near".parse().unwrap(),
+                mint_amount: hashmap! {
+                    eth().to_string() => eth().parse("15")?
+                },
+            },
+        ],
+        &Initializer {},
+    )
+    .await?;
+
+    // define consumers
+    let statistic_consumers: [Box<dyn StatisticConsumer>; 2] = [
+        Box::new(GasUsage::default()),
+        Box::new(StorageUsage::default()),
+    ];
+
+    Batch::new()
+        .add_chain_ops(vec![
+            make_op(
+                // make a native deposit call
+                contract_template.deposit_native_token(&account1, parse_near!("1 N")),
+            ),
+            make_op(
+                // Transfer tokens to contract template
+                eth.ft_transfer_call(
+                    contract_template.contract.id().clone(),
+                    10.into(),
+                    None,
+                    String::from(""),
+                    &account2,
+                    1u128,
+                ),
+            ),
+        ])
+        .run()
+        .await?
+        .populate_statistic(statistic_consumers)
         .print_statistic()?;
 
     Ok(())
