@@ -11,6 +11,7 @@ if [ -f "$TEST_TOKEN" ]; then
     wasm-opt -O4 ./test_token/wasm_target/test_token.wasm -o ./test_token/wasm_target/test_token.wasm --strip-debug
 fi
 
+mkdir -p ./res
 cp target/wasm32-unknown-unknown/release/*.wasm ./res/
 
 wasm-opt -O4 ./res/test_contract.wasm -o ./res/test_contract.wasm --strip-debug
