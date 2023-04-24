@@ -13,6 +13,12 @@ macro_rules! compile_error {
     }
 }
 
+//TODO make syntax errors in methods, struct fields to be returned to the user
+// example
+// pub fn deposit_native_token(&mut self) {
+//     let amount: env::attached_deposit(); // ':' instead of '=' but the error is not passed to the rust analyzer
+// }
+
 /// The attribute macro which should be used for generating integration tests binding
 /// Should be used for the definition of the contract struct and all impl blocks which API should be added.
 /// Also works for the trait impl of the contract struct

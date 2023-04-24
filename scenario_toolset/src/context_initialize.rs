@@ -227,6 +227,7 @@ async fn initialize_tokens(
                 name,
                 ticker,
                 decimals,
+                initial_supply,
                 ..
             },
             test_token_contract,
@@ -235,6 +236,7 @@ async fn initialize_tokens(
                 name.to_string(),
                 ticker.to_string(),
                 *decimals,
+                Some((*initial_supply).into()),
                 test_token_contract.contract.as_account(),
             )
         },

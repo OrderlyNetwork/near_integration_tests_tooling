@@ -42,20 +42,17 @@ impl<T> TxResult<T>
 where
     T: Clone,
 {
-    pub fn populate_statistic<const N: usize>(
-        self,
-        consumers: &mut [Box<dyn StatisticConsumer>; N],
-    ) -> Self {
+    pub fn populate_statistic(self, consumers: &mut [&mut Box<dyn StatisticConsumer>]) -> Self {
         for consumer in consumers.iter_mut() {
-            consumer.consume_statistic(&&Statistic::from(self.clone()));
+            consumer.consume_statistic(&Statistic::from(self.clone()));
         }
         self
     }
 
     #[allow(dead_code)]
-    pub fn process_statistic<const N: usize>(
+    pub fn process_statistics<const N: usize>(
         self,
-        mut consumers: [Box<dyn StatisticConsumer>; N],
+        consumers: &mut [&mut Box<dyn StatisticConsumer>],
     ) -> String {
         let mut result = String::new();
 
@@ -65,5 +62,21 @@ where
         }
 
         result
+    }
+}
+
+pub trait IntoMutRefs<T, const N: usize> {
+    fn into_refs(&mut self) -> [&mut T; N];
+}
+
+impl<const N: usize> IntoMutRefs<Box<dyn StatisticConsumer>, N>
+    for [Box<dyn StatisticConsumer>; N]
+{
+    fn into_refs(&mut self) -> [&mut Box<dyn StatisticConsumer>; N] {
+        self.iter_mut()
+            .map(|c| c)
+            .collect::<Vec<_>>()
+            .try_into()
+            .unwrap()
     }
 }

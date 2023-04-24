@@ -1,7 +1,6 @@
 mod contract_initializer;
 
 use maplit::hashmap;
-use near_units::parse_near;
 use scenario_toolset::{
     context_initialize::initialize_context,
     utils::{
@@ -32,27 +31,6 @@ async fn test_ft_transfer_usage() -> anyhow::Result<()> {
 
     // This is how contract's role accounts can be obtained from contract_holder
     let _owner = &contract_holder.owner;
-
-    // Create storage deposit for contract template in eth token
-    eth.storage_deposit(
-        None,
-        None,
-        contract_template.contract.as_account(),
-        parse_near!("1N"),
-    )
-    .await?;
-
-    eth.storage_deposit(None, None, eth.contract.as_account(), parse_near!("1N"))
-        .await?;
-
-    // Mint tokens
-    eth.mint(
-        eth.contract.id().clone(),
-        10.into(),
-        eth.contract.as_account(),
-        1u128,
-    )
-    .await?;
 
     // Transfer tokens to contract template
     eth.ft_transfer(
