@@ -4,7 +4,7 @@ use std::fmt::{self, Display, Formatter};
 use workspaces::{types::Balance, AccountId};
 
 /// Token description for initialization fungible token contract
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TokenInfo {
     pub account_id: AccountId,
     pub name: String,
@@ -12,6 +12,7 @@ pub struct TokenInfo {
     pub decimals: u8,
     pub storage_deposit_amount: Balance,
     pub wasm_file: Vec<u8>,
+    pub initial_supply: u128,
 }
 
 impl TokenInfo {
@@ -60,6 +61,7 @@ static WNEAR: Lazy<TokenInfo> = Lazy::new(|| TokenInfo {
     decimals: 24,
     storage_deposit_amount: 100_000_000_000_000_000_000_000,
     wasm_file: DEFAULT_FT_WASM.clone(),
+    initial_supply: 1_000_000_000000000000000000000000,
 });
 
 /// Wrapped Near token info
@@ -74,6 +76,7 @@ static USDC: Lazy<TokenInfo> = Lazy::new(|| TokenInfo {
     decimals: 6,
     storage_deposit_amount: 100_000_000_000_000_000_000_000,
     wasm_file: DEFAULT_FT_WASM.clone(),
+    initial_supply: 1_000_000_000000,
 });
 
 /// USD Coin token info
@@ -88,6 +91,7 @@ static ETHER: Lazy<TokenInfo> = Lazy::new(|| TokenInfo {
     decimals: 18,
     storage_deposit_amount: 100_000_000_000_000_000_000_000,
     wasm_file: DEFAULT_FT_WASM.clone(),
+    initial_supply: 1_000_000_000000000000000000,
 });
 
 /// Ether token info

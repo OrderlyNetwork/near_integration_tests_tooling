@@ -6,6 +6,16 @@ pub trait StatisticGroupPrinter {
     fn print_statistic(&self) -> Result<(), TestError>;
 }
 
+impl StatisticGroupPrinter for &mut [&mut Box<dyn StatisticConsumer>] {
+    fn print_statistic(&self) -> Result<(), TestError> {
+        for consumer in self.iter() {
+            consumer.print_statistic()?;
+        }
+
+        Ok(())
+    }
+}
+
 impl<const N: usize> StatisticGroupPrinter for [Box<dyn StatisticConsumer>; N] {
     fn print_statistic(&self) -> Result<(), TestError> {
         for consumer in self {

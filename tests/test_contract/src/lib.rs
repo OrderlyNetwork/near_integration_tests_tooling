@@ -85,7 +85,7 @@ impl TestContract {
 
     #[handle_result]
     pub fn view_no_param_ret_error_handle_res(&self) -> Result<(), &'static str> {
-        Err("View function rised error!")
+        Err("View function raised error!")
     }
 
     pub fn view_account_id(&self, account: AccountId) -> AccountId {
@@ -128,6 +128,7 @@ impl TestContract {
     }
 }
 
+#[integration_tests_bindgen]
 #[near_bindgen]
 #[allow(unused_variables)]
 impl FungibleTokenReceiver for TestContract {

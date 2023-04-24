@@ -13,7 +13,7 @@ use integration_tests_toolset::{
         statistic_group_printer::StatisticGroupPrinter,
         storage_usage_aggregator::StorageUsage,
     },
-    tx_result::TxResult,
+    tx_result::{IntoMutRefs, TxResult},
 };
 use maplit::hashmap;
 use operation_examples::{error_operation, numbered_operation, sleep_operation};
@@ -59,7 +59,7 @@ async fn test_chain_catch_error() {
 
 /// Example of butch usage with contract operation that panics
 #[tokio::test]
-#[should_panic = "View function rised error!"]
+#[should_panic = "View function raised error!"]
 async fn test_concurrent_catch_error() {
     let (_, contract_template, _, _, _) =
         initialize_context(&[], &[], &Initializer {}).await.unwrap();
@@ -106,6 +106,12 @@ async fn test_batch_combination() -> anyhow::Result<()> {
     let (_, contract_template, _, _, accounts) =
         initialize_context(&[], &accounts, &Initializer {}).await?;
 
+    let mut stat_consumers = [
+        Box::new(GasUsage::default()),
+        Box::new(StorageUsage::default()),
+        Box::new(CallCounter::default()),
+    ] as [Box<dyn StatisticConsumer>; 3];
+
     let stat = Batch::new()
         .add_chain_ops(vec![
             make_op(contract_template.view_account_id(accounts[0].id().clone())),
@@ -131,18 +137,14 @@ async fn test_batch_combination() -> anyhow::Result<()> {
         )
         .run()
         .await?
-        .process_statistic([
-            Box::new(GasUsage::default()),
-            Box::new(StorageUsage::default()),
-            Box::new(CallCounter::default()),
-        ]);
+        .process_statistic(&mut stat_consumers.into_refs());
 
     println!("{}", stat);
 
     Ok(())
 }
 
-/// Example of differen kinds of batch operations with statistic processing and printing
+/// Example of different kinds of batch operations with statistic processing and printing
 #[tokio::test]
 async fn block_operations_example() -> anyhow::Result<()> {
     let (_, contract_template, _, [_eth, _usdc], [maker_account]) = initialize_context(
@@ -166,7 +168,7 @@ async fn block_operations_example() -> anyhow::Result<()> {
         .call_no_param_ret_u64(&maker_account)
         .map(|res| {
             res.map(|tx| {
-                tx.populate_statistic(&mut statistic_consumer);
+                tx.populate_statistic(&mut statistic_consumer.into_refs());
                 42
             })
         });
@@ -222,7 +224,7 @@ async fn block_operations_example() -> anyhow::Result<()> {
     block1
         .run()
         .await?
-        .populate_statistic(statistic_consumer)
+        .populate_statistic(&mut statistic_consumer.into_refs())
         .print_statistic()?;
 
     Ok(())
