@@ -30,58 +30,12 @@ There are three parts of this framework:
 - initialize_context function from scenario_toolset - function, that aimed to substitute test context structure, simplify and speed up initialization of context for your tests.
 - scenario_toolset - set of tools for creating batch operations scenarios.
 
-## Usage setup
-Currently we plan this set of tools to live in the Orderly Gitlab repo and to be not published to the crates.io.
-So in order to use it in other Orderly smart contract projects it is required to specify the dependency link.
-Currently we decided to use ssh connection with the Gitlab because it is most commonly used by developers.
-
-To use different packages from the current workspace several steps should be done:
-
-- Add your public ssh key to the Gitlab account
-
-- Append the ~/.cargo/config file with the next lines:
-```text
-[net]
-git-fetch-with-cli = true
-```
-
-- Add required dependency to the particular Cargo.toml file
-```toml
-# For the integration_tests_bindgen_macro package
-integration_tests_bindgen_macro = { git = "ssh://git@gitlab.com/orderly-network/near_integration_tests_tooling.git", branch = "Specific_branch" }
-
-# For the integration_tests_toolset package
-integration_tests_toolset = { git = "ssh://git@gitlab.com/orderly-network/near_integration_tests_tooling.git", branch = "Specific_branch" }
-
-# For the scenario_toolset package
-scenario_toolset = { git = "ssh://git@gitlab.com/orderly-network/near_integration_tests_tooling.git", branch = "Specific_branch" }
-
-# For the test_token package
-test_token = { git = "ssh://git@gitlab.com/orderly-network/near_integration_tests_tooling.git", branch = "Specific_branch" }
-```
-
-Basically this is it for the initial setup for your project. Also for the usage examples take a look in sections below.
-
 ## Generating Contract Test structure and functions for integration tests of you contract
 Calling contract functions from integration tests is not trivial, because you need to write some boilerplate code for that. To simplify smart contract function calling, immediately obtain result value from it, obtain transaction logs and statistics, and print them, you can use generated contract test structure and functions.
 
 **Note! generating Test structure and functions for your contract is not adding any runtime code and overhead to your contract, it is adding test functions and code, that run only in integration tests.**
 
-To use generated contract test structure and functions you need to add next lines to your contract Cargo.toml file:
-```toml
-[dependencies]
-integration_tests_bindgen_macro = {path = "local-path-to/near_integration_tests_tooling/integration_tests_bindgen_macro"}
-integration_tests_toolset = {path = "local-path-to/near_integration_tests_tooling/integration_tests_toolset"}
-
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-anyhow = "1"
-async-trait = "0.1"
-integration_tests_bindgen_macro = {path = "local-path-to/near_integration_tests_tooling/integration_tests_bindgen_macro"}
-lazy_static = "1"
-scenario_toolset = {path = "local-path-to/near_integration_tests_tooling/scenario_toolset"}
-workspaces = "0.7"
-```
-Then add #[integration_tests_bindgen] attribute to your contract mod:
+Add #[integration_tests_bindgen] attribute to your contract mod:
 ```rust
 use integration_tests_bindgen_macro::integration_tests_bindgen;
 
